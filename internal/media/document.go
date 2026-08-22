@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/derispewss/finwa-projects/internal/ai"
+	"github.com/derispewss/gonami-projects/internal/ai"
 )
 
 const minStatementTextLen = 300

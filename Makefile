@@ -4,7 +4,7 @@ COMPOSE      = docker compose
 COMPOSE_DEV  = docker compose -f docker-compose.yml -f docker-compose.dev.yml
 GO_IMAGE     = golang:1.26-alpine
 
-GO_CACHE = -v finwa-gomod:/go/pkg/mod -v finwa-gocache:/root/.cache/go-build
+GO_CACHE = -v gonami-gomod:/go/pkg/mod -v gonami-gocache:/root/.cache/go-build
 
 setup:
 	@test -f .env || cp .env.example .env

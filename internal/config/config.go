@@ -57,7 +57,7 @@ func Load() (*Config, error) {
 	cfg.StorageEndpoint = getEnv("STORAGE_ENDPOINT", "localhost:9000")
 	cfg.StorageAccessKey = getEnv("STORAGE_ACCESS_KEY", "minioadmin")
 	cfg.StorageSecretKey = getEnv("STORAGE_SECRET_KEY", "minioadmin")
-	cfg.StorageBucket = getEnv("STORAGE_BUCKET", "finwa")
+	cfg.StorageBucket = getEnv("STORAGE_BUCKET", "gonami")
 	cfg.StorageUseSSL = getEnvBool("STORAGE_USE_SSL", false)
 
 	cfg.GeminiAPIKey = getEnv("GEMINI_API_KEY", "")

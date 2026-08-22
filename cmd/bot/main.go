@@ -11,14 +11,14 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/pressly/goose/v3"
 
-	"github.com/derispewss/finwa-projects/internal/ai"
-	"github.com/derispewss/finwa-projects/internal/application"
-	"github.com/derispewss/finwa-projects/internal/config"
-	"github.com/derispewss/finwa-projects/internal/database"
-	"github.com/derispewss/finwa-projects/internal/parser"
-	"github.com/derispewss/finwa-projects/internal/repository"
-	"github.com/derispewss/finwa-projects/internal/storage"
-	"github.com/derispewss/finwa-projects/internal/whatsapp"
+	"github.com/derispewss/gonami-projects/internal/ai"
+	"github.com/derispewss/gonami-projects/internal/application"
+	"github.com/derispewss/gonami-projects/internal/config"
+	"github.com/derispewss/gonami-projects/internal/database"
+	"github.com/derispewss/gonami-projects/internal/parser"
+	"github.com/derispewss/gonami-projects/internal/repository"
+	"github.com/derispewss/gonami-projects/internal/storage"
+	"github.com/derispewss/gonami-projects/internal/whatsapp"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 
@@ -34,7 +34,7 @@ func main() {
 
 	setupLogger()
 
-	slog.Info("starting finwa bot")
+	slog.Info("starting gonami bot")
 
 	cfg, err := config.Load()
 	if err != nil {
@@ -119,7 +119,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	slog.Info("finwa bot is running. Press Ctrl+C to stop.")
+	slog.Info("gonami bot is running. Press Ctrl+C to stop.")
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
@@ -137,7 +137,7 @@ func main() {
 	db.Close()
 
 	<-shutdownCtx.Done()
-	slog.Info("finwa bot stopped")
+	slog.Info("gonami bot stopped")
 }
 
 func setupLogger() {

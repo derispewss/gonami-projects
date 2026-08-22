@@ -57,7 +57,7 @@ jobs:
       - id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/finwa-bot
+          images: ghcr.io/${{ github.repository_owner }}/gonami-bot
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=semver,pattern={{version}}
@@ -86,12 +86,12 @@ jobs:
 
       - uses: softprops/action-gh-release@v2
         with:
-          name: finwa ${{ github.ref_name }}
+          name: gonami ${{ github.ref_name }}
           generate_release_notes: true
           body: |
 
             ```bash
-            docker pull ghcr.io/${{ github.repository_owner }}/finwa-bot:${{ github.ref_name }}
+            docker pull ghcr.io/${{ github.repository_owner }}/gonami-bot:${{ github.ref_name }}
             ```
 
             Tag lain: `latest` · `${{ github.ref_name }}` · `sha-${{ github.sha }}`

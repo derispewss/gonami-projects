@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/derispewss/finwa-projects/internal/application"
-	"github.com/derispewss/finwa-projects/internal/domain"
-	"github.com/derispewss/finwa-projects/internal/format"
+	"github.com/derispewss/gonami-projects/internal/application"
+	"github.com/derispewss/gonami-projects/internal/domain"
+	"github.com/derispewss/gonami-projects/internal/format"
 )
 
 func replySaved(tx *domain.Transaction) string {
@@ -140,7 +140,7 @@ func replyLastTransactions(txs []*domain.Transaction) string {
 }
 
 func helpMessage() string {
-	return `*finwa — Personal Finance Assistant* 💰
+	return `*gonami — Personal Finance Assistant* 💰
 
 Catat transaksi dengan cara ngobrol biasa:
 • _beli kopi 15k_

@@ -6,7 +6,7 @@ import (
 	"io"
 	"log/slog"
 
-	"github.com/derispewss/finwa-projects/internal/config"
+	"github.com/derispewss/gonami-projects/internal/config"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )

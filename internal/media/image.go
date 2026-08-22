@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/derispewss/finwa-projects/internal/ai"
+	"github.com/derispewss/gonami-projects/internal/ai"
 )
 
 type ImageProcessor struct {

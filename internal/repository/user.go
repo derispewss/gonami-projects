@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 
-	"github.com/derispewss/finwa-projects/internal/domain"
+	"github.com/derispewss/gonami-projects/internal/domain"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 

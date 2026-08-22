@@ -3,7 +3,7 @@ package parser
 import (
 	"time"
 
-	"github.com/derispewss/finwa-projects/internal/domain"
+	"github.com/derispewss/gonami-projects/internal/domain"
 )
 
 type Result struct {

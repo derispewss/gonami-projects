@@ -5,7 +5,7 @@ import (
 	"io"
 	"log/slog"
 
-	"github.com/derispewss/finwa-projects/internal/config"
+	"github.com/derispewss/gonami-projects/internal/config"
 )
 
 type Storage interface {

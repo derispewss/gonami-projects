@@ -3,7 +3,7 @@ package application
 import (
 	"context"
 
-	"github.com/derispewss/finwa-projects/internal/repository"
+	"github.com/derispewss/gonami-projects/internal/repository"
 )
 
 type BalanceOutcome struct {

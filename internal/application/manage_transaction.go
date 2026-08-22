@@ -3,8 +3,8 @@ package application
 import (
 	"context"
 
-	"github.com/derispewss/finwa-projects/internal/domain"
-	"github.com/derispewss/finwa-projects/internal/repository"
+	"github.com/derispewss/gonami-projects/internal/domain"
+	"github.com/derispewss/gonami-projects/internal/repository"
 )
 
 type ManageTransaction struct {

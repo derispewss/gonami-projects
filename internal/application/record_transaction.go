@@ -7,11 +7,11 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/derispewss/finwa-projects/internal/ai"
-	"github.com/derispewss/finwa-projects/internal/config"
-	"github.com/derispewss/finwa-projects/internal/domain"
-	"github.com/derispewss/finwa-projects/internal/parser"
-	"github.com/derispewss/finwa-projects/internal/repository"
+	"github.com/derispewss/gonami-projects/internal/ai"
+	"github.com/derispewss/gonami-projects/internal/config"
+	"github.com/derispewss/gonami-projects/internal/domain"
+	"github.com/derispewss/gonami-projects/internal/parser"
+	"github.com/derispewss/gonami-projects/internal/repository"
 	"github.com/google/uuid"
 )
 

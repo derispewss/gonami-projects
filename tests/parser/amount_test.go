@@ -3,7 +3,7 @@ package parser_test
 import (
 	"testing"
 
-	"github.com/derispewss/finwa-projects/internal/parser"
+	"github.com/derispewss/gonami-projects/internal/parser"
 )
 
 func TestFindAmount(t *testing.T) {

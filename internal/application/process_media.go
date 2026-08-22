@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/derispewss/finwa-projects/internal/domain"
-	"github.com/derispewss/finwa-projects/internal/media"
-	"github.com/derispewss/finwa-projects/internal/parser"
-	"github.com/derispewss/finwa-projects/internal/storage"
+	"github.com/derispewss/gonami-projects/internal/domain"
+	"github.com/derispewss/gonami-projects/internal/media"
+	"github.com/derispewss/gonami-projects/internal/parser"
+	"github.com/derispewss/gonami-projects/internal/storage"
 )
 
 type ProcessMedia struct {

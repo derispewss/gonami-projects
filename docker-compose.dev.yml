@@ -1,4 +1,4 @@
 services:
   bot:
     build: .
-    image: finwa-bot:dev
+    image: gonami-bot:dev

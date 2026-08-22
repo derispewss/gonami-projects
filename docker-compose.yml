@@ -34,7 +34,7 @@ services:
       retries: 12
 
   bot:
-    image: ghcr.io/derispewss/finwa-bot:latest
+    image: ghcr.io/derispewss/gonami-bot:latest
     pull_policy: always
     restart: unless-stopped
     depends_on:

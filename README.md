@@ -1,14 +1,14 @@
-# finwa 💰
+# gonami 💰
 
 > **Personal finance assistant di WhatsApp** — catat pemasukan, pengeluaran, dan transfer
-> cukup dengan ngobrol biasa. Kirim teks, voice note, foto struk, bahkan PDF — finwa
+> cukup dengan ngobrol biasa. Kirim teks, voice note, foto struk, bahkan PDF — gonami
 > yang menguruskannya.
 
 ![Go](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white)
 ![WhatsApp](https://img.shields.io/badge/WhatsApp-whatsmeow-25D366?logo=whatsapp&logoColor=white)
 ![AI](https://img.shields.io/badge/AI-Gemini-4285F4?logo=google&logoColor=white)
 ![DB](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white)
-[![CI](https://github.com/derispewss/finwa-projects/actions/workflows/ci.yml/badge.svg)](https://github.com/derispewss/finwa-projects/actions/workflows/ci.yml)
+[![CI](https://github.com/derispewss/gonami-projects/actions/workflows/ci.yml/badge.svg)](https://github.com/derispewss/gonami-projects/actions/workflows/ci.yml)
 
 ---
 
@@ -98,7 +98,7 @@ diambil dari GitHub Container Registry (`linux/amd64` & `linux/arm64`).
 
 ```bash
 # 0. Ambil repo (untuk docker-compose.yml & .env.example)
-git clone https://github.com/derispewss/finwa-projects.git && cd finwa-projects
+git clone https://github.com/derispewss/gonami-projects.git && cd gonami-projects
 
 # 1. Siapkan konfigurasi
 cp .env.example .env
@@ -115,7 +115,7 @@ docker compose logs -f bot
 ```
 
 > **Package GHCR** awalnya privat setelah push pertama. Agar bisa di-pull publik:
-> GitHub → Packages → `finwa-bot` → Package settings → *Change visibility* → Public.
+> GitHub → Packages → `gonami-bot` → Package settings → *Change visibility* → Public.
 > (Atau `docker login ghcr.io` dengan PAT yang punya scope `read:packages`.)
 
 Session WhatsApp, arsip media, dan database tersimpan di named volumes
@@ -135,7 +135,7 @@ make logs           # ikuti log bot
 flowchart LR
     subgraph docker["docker compose"]
         direction TB
-        B["🤖 bot<br/>ghcr.io/derispewss/finwa-bot"] --> DB[("🐘 PostgreSQL 17<br/>volume: pgdata")]
+        B["🤖 bot<br/>ghcr.io/derispewss/gonami-bot"] --> DB[("🐘 PostgreSQL 17<br/>volume: pgdata")]
         B --> MIO[("📦 MinIO<br/>volume: minio_data")]
         B --- W[("📱 WhatsApp session<br/>volume: wa_data")]
     end
@@ -149,7 +149,7 @@ flowchart LR
 ```
 
 Urutan start dijamin compose: **PostgreSQL & MinIO sehat dulu** → baru bot jalan.
-Bucket `finwa` dibuat otomatis saat bot start. Semua state persisten ada di
+Bucket `gonami` dibuat otomatis saat bot start. Semua state persisten ada di
 named volumes — rebuild container tanpa kehilangan data.
 
 ---
@@ -210,7 +210,7 @@ flowchart LR
 **Upgrade produksi / pinning versi:** default compose memakai `:latest`
 (`pull_policy: always` → `make up` selalu dapat build terbaru). Untuk
 mengunci versi tertentu, edit `image:` di `docker-compose.yml`
-misalnya `ghcr.io/derispewss/finwa-bot:1.0.0`.
+misalnya `ghcr.io/derispewss/gonami-bot:1.0.0`.
 
 ---
 

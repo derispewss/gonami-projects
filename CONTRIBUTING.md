@@ -1,6 +1,6 @@
 # Panduan Berkontribusi
 
-Terima kasih ingin berkontribusi pada **finwa**! Dokumen ini memandu kamu dari
+Terima kasih ingin berkontribusi pada **gonami**! Dokumen ini memandu kamu dari
 nol sampai pull request pertama. Seluruh siklus pengembangan berjalan di
 Docker — tidak perlu install Go, PostgreSQL, MinIO, atau goose di mesin lokal.
 
@@ -18,11 +18,11 @@ Docker — tidak perlu install Go, PostgreSQL, MinIO, atau goose di mesin lokal.
 
 ```bash
 # 1. Fork repo di GitHub, lalu clone fork-mu
-git clone https://github.com/<username>/finwa-projects.git
-cd finwa-projects
+git clone https://github.com/<username>/gonami-projects.git
+cd gonami-projects
 
 # 2. Tambahkan upstream agar selalu bisa sinkron
-git remote add upstream https://github.com/derispewss/finwa-projects.git
+git remote add upstream https://github.com/derispewss/gonami-projects.git
 
 # 3. Siapkan konfigurasi
 make setup            # membuat .env dari .env.example

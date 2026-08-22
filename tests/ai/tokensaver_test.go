@@ -3,7 +3,7 @@ package ai_test
 import (
 	"testing"
 
-	"github.com/derispewss/finwa-projects/internal/ai"
+	"github.com/derispewss/gonami-projects/internal/ai"
 )
 
 func TestTokenSaverBudget(t *testing.T) {

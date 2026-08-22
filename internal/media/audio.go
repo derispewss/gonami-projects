@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/derispewss/finwa-projects/internal/ai"
+	"github.com/derispewss/gonami-projects/internal/ai"
 )
 
 type AudioProcessor struct {

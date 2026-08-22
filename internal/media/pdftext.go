@@ -15,7 +15,7 @@ func ExtractPDFText(data []byte) (string, error) {
 		return "", fmt.Errorf("pdf kosong")
 	}
 
-	tmpDir, err := os.MkdirTemp("", "finwa-pdf-*")
+	tmpDir, err := os.MkdirTemp("", "gonami-pdf-*")
 	if err != nil {
 		return "", fmt.Errorf("gagal membuat dir sementara: %w", err)
 	}

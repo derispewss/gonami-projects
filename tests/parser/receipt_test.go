@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/derispewss/finwa-projects/internal/ai"
-	"github.com/derispewss/finwa-projects/internal/media"
+	"github.com/derispewss/gonami-projects/internal/ai"
+	"github.com/derispewss/gonami-projects/internal/media"
 )
 
 func TestParseReceiptJSON(t *testing.T) {

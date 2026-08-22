@@ -1,12 +1,12 @@
 package application
 
 import (
-	"github.com/derispewss/finwa-projects/internal/ai"
-	"github.com/derispewss/finwa-projects/internal/config"
-	"github.com/derispewss/finwa-projects/internal/media"
-	"github.com/derispewss/finwa-projects/internal/parser"
-	"github.com/derispewss/finwa-projects/internal/repository"
-	"github.com/derispewss/finwa-projects/internal/storage"
+	"github.com/derispewss/gonami-projects/internal/ai"
+	"github.com/derispewss/gonami-projects/internal/config"
+	"github.com/derispewss/gonami-projects/internal/media"
+	"github.com/derispewss/gonami-projects/internal/parser"
+	"github.com/derispewss/gonami-projects/internal/repository"
+	"github.com/derispewss/gonami-projects/internal/storage"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 

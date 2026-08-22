@@ -1,4 +1,4 @@
-module github.com/derispewss/finwa-projects
+module github.com/derispewss/gonami-projects
 
 go 1.26.0
 

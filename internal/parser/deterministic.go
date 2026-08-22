@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/derispewss/finwa-projects/internal/domain"
+	"github.com/derispewss/gonami-projects/internal/domain"
 )
 
 var ErrNotTransaction = errors.New("teks bukan transaksi")

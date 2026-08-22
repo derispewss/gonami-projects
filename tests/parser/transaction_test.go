@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/derispewss/finwa-projects/internal/domain"
-	"github.com/derispewss/finwa-projects/internal/parser"
+	"github.com/derispewss/gonami-projects/internal/domain"
+	"github.com/derispewss/gonami-projects/internal/parser"
 )
 
 func TestParseTransaction(t *testing.T) {
