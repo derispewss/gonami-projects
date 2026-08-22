@@ -19,6 +19,11 @@ const (
 	ReactionFailed     = "❌"
 )
 
+const (
+	ButtonConfirmYes = "gonami_confirm_yes"
+	ButtonConfirmNo  = "gonami_confirm_no"
+)
+
 type Sender struct {
 	wa *whatsmeow.Client
 }
@@ -68,5 +73,33 @@ func (s *Sender) SendReaction(ctx context.Context, chat types.JID, msgID string,
 	}
 
 	slog.Debug("reaction sent", "to", chat.User, "message_id", resp.ID, "emoji", text)
+	return nil
+}
+
+func (s *Sender) SendConfirmButtons(ctx context.Context, to types.JID) error {
+	msg := &waE2E.Message{
+		ButtonsMessage: &waE2E.ButtonsMessage{
+			ContentText: proto.String("Simpan transaksi ini?"),
+			FooterText:  proto.String("gonami"),
+			HeaderType:  waE2E.ButtonsMessage_EMPTY.Enum(),
+			Buttons: []*waE2E.ButtonsMessage_Button{
+				{
+					ButtonID:   proto.String(ButtonConfirmYes),
+					ButtonText: &waE2E.ButtonsMessage_Button_ButtonText{DisplayText: proto.String("✅ Simpan")},
+				},
+				{
+					ButtonID:   proto.String(ButtonConfirmNo),
+					ButtonText: &waE2E.ButtonsMessage_Button_ButtonText{DisplayText: proto.String("❌ Batal")},
+				},
+			},
+		},
+	}
+
+	resp, err := s.wa.SendMessage(ctx, to, msg)
+	if err != nil {
+		return fmt.Errorf("send confirm buttons to %s: %w", to.String(), err)
+	}
+
+	slog.Debug("confirm buttons sent", "to", to.User, "message_id", resp.ID)
 	return nil
 }

@@ -42,7 +42,18 @@ func (r *Router) Route(ctx context.Context, evt *events.Message) {
 		return
 	}
 
+	if btn := evt.Message.GetButtonsResponseMessage(); btn != nil {
+		switch btn.GetSelectedButtonID() {
+		case ButtonConfirmYes:
+			r.confirmDraft(ctx, senderJID)
+		case ButtonConfirmNo:
+			r.rejectDraft(ctx, senderJID)
+		}
+		return
+	}
+
 	text := extractText(evt)
+
 	if text == "" {
 
 		slog.Debug("pesan diabaikan (format tidak dikenali)", "message_id", evt.Info.ID)
@@ -53,18 +64,11 @@ func (r *Router) Route(ctx context.Context, evt *events.Message) {
 
 	if yes, decided := parser.MatchConfirmation(normalized); decided {
 		if yes {
-			tx, err := r.app.Confirm.Confirm(ctx, senderJID.String())
-			if err == nil {
-				r.sender.SendText(ctx, senderJID, replySaved(tx))
-				return
-			} else if !errors.Is(err, domain.ErrNotFound) {
-				slog.Error("error confirming draft", "error", err)
+			if r.confirmDraft(ctx, senderJID) {
 				return
 			}
-
 		} else {
-			if err := r.app.Confirm.Reject(ctx, senderJID.String()); err == nil {
-				r.sender.SendText(ctx, senderJID, "❌ Transaksi dibatalkan.")
+			if r.rejectDraft(ctx, senderJID) {
 				return
 			}
 		}
@@ -197,9 +201,33 @@ func (r *Router) replyOutcome(ctx context.Context, jid types.JID, out *applicati
 		r.sender.SendText(ctx, jid, replySaved(out.Tx))
 	case application.RecordDraft:
 		r.sender.SendText(ctx, jid, replyDraftConfirm(out))
+		if err := r.sender.SendConfirmButtons(ctx, jid); err != nil {
+			slog.Warn("gagal kirim tombol konfirmasi", "error", err)
+		}
 	case application.RecordUnclear:
 		slog.Info("transaksi tidak dikenali — pesan diabaikan tanpa balasan")
 	}
+}
+
+func (r *Router) confirmDraft(ctx context.Context, jid types.JID) bool {
+	tx, err := r.app.Confirm.Confirm(ctx, jid.String())
+	if err == nil {
+		r.sender.SendText(ctx, jid, replySaved(tx))
+		return true
+	}
+	if !errors.Is(err, domain.ErrNotFound) {
+		slog.Error("error confirming draft", "error", err)
+		return true
+	}
+	return false
+}
+
+func (r *Router) rejectDraft(ctx context.Context, jid types.JID) bool {
+	if err := r.app.Confirm.Reject(ctx, jid.String()); err == nil {
+		r.sender.SendText(ctx, jid, "❌ Transaksi dibatalkan.")
+		return true
+	}
+	return false
 }
 
 func isPrivateChat(jid types.JID) bool {
