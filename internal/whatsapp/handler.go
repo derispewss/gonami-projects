@@ -3,6 +3,7 @@ package whatsapp
 import (
 	"context"
 	"log/slog"
+	"time"
 
 	"go.mau.fi/whatsmeow/types/events"
 )
@@ -44,7 +45,13 @@ func (h *Handler) HandleEvent(evt any) {
 			"is_unavailable", v.IsUnavailable)
 
 	case *events.LoggedOut:
-		slog.Warn("whatsapp logged out", "on_connect", v.OnConnect)
+		slog.Warn("whatsapp logged out, memulai pairing ulang otomatis", "on_connect", v.OnConnect)
+		go func() {
+			time.Sleep(3 * time.Second)
+			if err := h.router.client.ReconnectWithQR(context.Background()); err != nil {
+				slog.Error("gagal pairing ulang otomatis", "error", err)
+			}
+		}()
 
 	case *events.PairSuccess:
 		slog.Info("whatsapp pair success", "jid", v.ID.String())

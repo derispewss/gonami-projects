@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sync"
+	"time"
 
 	"github.com/mdp/qrterminal/v3"
 	"go.mau.fi/whatsmeow"
@@ -15,8 +17,9 @@ import (
 )
 
 type Client struct {
-	WA      *whatsmeow.Client
-	handler *Handler
+	WA          *whatsmeow.Client
+	handler     *Handler
+	reconnectMu sync.Mutex
 }
 
 func NewClient(ctx context.Context, dbPath string) (*Client, error) {
@@ -93,6 +96,25 @@ func (c *Client) connectExisting() error {
 	slog.Info("whatsapp session found, connecting")
 	if err := c.WA.Connect(); err != nil {
 		return fmt.Errorf("connect: %w", err)
+	}
+	return nil
+}
+
+func (c *Client) ReconnectWithQR(ctx context.Context) error {
+	c.reconnectMu.Lock()
+	defer c.reconnectMu.Unlock()
+
+	if c.WA.Store.ID != nil {
+		return c.connectExisting()
+	}
+
+	if c.WA.IsConnected() {
+		c.WA.Disconnect()
+	}
+	time.Sleep(2 * time.Second)
+
+	if err := c.connectWithQR(ctx); err != nil {
+		return fmt.Errorf("reconnect with qr: %w", err)
 	}
 	return nil
 }
