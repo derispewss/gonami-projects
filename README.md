@@ -404,4 +404,5 @@ flowchart TD
 
 ## 📄 Lisensi
 
-Belum ditentukan — gunakan internal/private sampai lisensi resmi diterbitkan.
+Dirilis di bawah [Lisensi MIT](LICENSE) — bebas digunakan, dimodifikasi, dan
+didistribusikan.
