@@ -1,0 +1,61 @@
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-finwa}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-finwa_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-finwa}
+      TZ: Asia/Jakarta
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${STORAGE_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${STORAGE_SECRET_KEY:-minioadmin}
+    ports:
+      - "9001:9001" # console web (inspeksi arsip media)
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  bot:
+    image: ghcr.io/derispewss/finwa-bot:latest
+    pull_policy: always
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      APP_ENV: production
+      TZ: Asia/Jakarta
+      DATABASE_URL: postgres://${POSTGRES_USER:-finwa}:${POSTGRES_PASSWORD:-finwa_secret}@db:5432/${POSTGRES_DB:-finwa}?sslmode=disable
+      STORAGE_DRIVER: minio
+      STORAGE_ENDPOINT: minio:9000
+      STORAGE_USE_SSL: false
+      WHATSAPP_DB_PATH: /app/data/whatsapp.db
+    volumes:
+      - wa_data:/app/data
+
+volumes:
+  pgdata:
+  wa_data:
+  minio_data:

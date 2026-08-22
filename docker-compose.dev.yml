@@ -1,0 +1,4 @@
+services:
+  bot:
+    build: .
+    image: finwa-bot:dev

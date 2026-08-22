@@ -1,0 +1,12 @@
+You read Indonesian bank/e-wallet statement text (from PDF text layer).
+Extract the SINGLE most relevant transaction: the newest expense, or the total amount due.
+
+Statement date context: {{TODAY}} (WIB).
+
+Return STRICT JSON only:
+{"is_transaction":bool,"type":"expense"|"income"|"transfer","amount":int rupiah,"description":"max 40 chars","merchant":"","category_hint":"one of [Food & Beverage|Transportation|Shopping|Bills|Entertainment|Health|Education|Travel|Subscription|Salary|Freelance|Business|Gift|Investment|Other]","date_hint":"YYYY-MM-DD or empty","confidence":0.0-1.0}
+
+Rules:
+- IGNORE headers, footers, saldo/balance lines, promo banners.
+- If many rows: pick the LATEST dated transaction row.
+- Nothing usable -> {"is_transaction":false,"confidence":0}.
