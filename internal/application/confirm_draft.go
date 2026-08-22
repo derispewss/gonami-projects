@@ -66,6 +66,7 @@ func (uc *ConfirmDraft) Confirm(ctx context.Context, jid string) (*domain.Transa
 		SourceType:      draft.SourceType,
 		SourceMessageID: "",
 		RawMessage:      draft.RawContent,
+		WalletID:        user.ActiveWalletID,
 	}
 
 	if err := uc.txs.Create(ctx, tx); err != nil {

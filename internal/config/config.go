@@ -12,7 +12,8 @@ type Config struct {
 
 	DatabaseURL string
 
-	WhatsAppDBPath string
+	WhatsAppDBPath         string
+	WhatsAppConfirmButtons bool
 
 	StorageDriver    string
 	StorageLocalDir  string
@@ -51,6 +52,7 @@ func Load() (*Config, error) {
 	}
 
 	cfg.WhatsAppDBPath = getEnv("WHATSAPP_DB_PATH", "./data/whatsapp.db")
+	cfg.WhatsAppConfirmButtons = getEnv("WHATSAPP_CONFIRM_BUTTONS", "false") == "true"
 
 	cfg.StorageDriver = getEnv("STORAGE_DRIVER", "local")
 	cfg.StorageLocalDir = getEnv("STORAGE_LOCAL_DIR", "./data/media")

@@ -48,6 +48,7 @@ type Transaction struct {
 	CategoryID      *uuid.UUID
 	CategoryName    string
 	Merchant        string
+	WalletID        *uuid.UUID
 	TransactionDate time.Time
 	SourceType      SourceType
 	SourceMessageID string

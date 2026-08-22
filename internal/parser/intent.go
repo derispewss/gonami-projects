@@ -13,6 +13,11 @@ const (
 	IntentRiwayat
 	IntentHapus
 	IntentHelp
+	IntentBudget
+	IntentInsight
+	IntentExport
+	IntentWallet
+	IntentKategori
 )
 
 type Period uint8
@@ -64,6 +69,10 @@ func NormalizeCommand(s string) []string {
 }
 
 func hasAny(tokens []string, words ...string) bool {
+	return HasAnyToken(tokens, words...)
+}
+
+func HasAnyToken(tokens []string, words ...string) bool {
 	for _, t := range tokens {
 		for _, w := range words {
 			if t == w {
@@ -125,6 +134,24 @@ func DetectIntent(text string) (CommandIntent, Period) {
 		(hasAny(tokens, "terakhir") || hasAny(tokens, "transaksi")):
 		return IntentHapus, period
 
+	case hasAny(tokens, "budget", "anggaran"):
+		return IntentBudget, period
+
+	case hasAny(tokens, "insight", "insights", "analisa", "anomali", "deteksi"),
+		hasBigram(tokens, "pengeluaran berulang"), hasBigram(tokens, "langganan bulanan"),
+		hasBigram(tokens, "tips hemat"):
+		return IntentInsight, period
+
+	case hasAny(tokens, "export", "ekspor", "unduh"), hasBigram(tokens, "kirim laporan"),
+		hasBigram(tokens, "download laporan"):
+		return IntentExport, period
+
+	case hasAny(tokens, "dompet", "wallet", "rekening"):
+		return IntentWallet, period
+
+	case hasAny(tokens, "kategori"):
+		return IntentKategori, period
+
 	case hasAny(tokens, "riwayat"), hasBigram(tokens, "transaksi terakhir"),
 		hasBigram(tokens, "catatan transaksi"):
 		return IntentRiwayat, period
@@ -172,4 +199,69 @@ func MatchConfirmation(s string) (yes bool, decided bool) {
 		return false, false
 	}
 	return hitConfirm, true
+}
+
+type BudgetCommand struct {
+	Category string
+	Amount   int64
+	Delete   bool
+}
+
+func DetectBudgetCommand(text string) (*BudgetCommand, bool) {
+	lower := strings.ToLower(text)
+
+	tokens := NormalizeCommand(lower)
+	hasKeyword := hasAny(tokens, "budget", "anggaran")
+	if !hasKeyword {
+		return nil, false
+	}
+
+	if hasAny(tokens, "hapus", "apus", "delete", "buang") {
+		words := removeBudgetKeywords(tokens)
+		words = removeCommandVerbs(words)
+		if len(words) == 0 {
+			return nil, true
+		}
+		return &BudgetCommand{Category: strings.Join(words, " "), Delete: true}, true
+	}
+
+	m, found := FindAmount(lower)
+	if !found || m.Value <= 0 {
+		return nil, false
+	}
+
+	before := strings.TrimSpace(lower[:m.Start])
+	words := NormalizeCommand(before)
+	words = removeBudgetKeywords(words)
+	words = removeCommandVerbs(words)
+	if len(words) == 0 || len(words) > 3 {
+		return nil, false
+	}
+	return &BudgetCommand{Category: strings.Join(words, " "), Amount: m.Value}, true
+}
+
+func removeBudgetKeywords(tokens []string) []string {
+	out := make([]string, 0, len(tokens))
+	for _, t := range tokens {
+		switch t {
+		case "budget", "anggaran":
+		default:
+			out = append(out, t)
+		}
+	}
+	return out
+}
+
+func removeCommandVerbs(tokens []string) []string {
+	out := make([]string, 0, len(tokens))
+	for _, t := range tokens {
+		switch t {
+		case "set", "atur", "pasang", "ubah", "buat", "tambah", "bikin",
+			"untuk", "per", "bulan", "bulanan", "kategori", "maksimal",
+			"max", "limit", "hapus", "apus", "delete", "buang":
+		default:
+			out = append(out, t)
+		}
+	}
+	return out
 }

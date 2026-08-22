@@ -3,11 +3,13 @@ package whatsapp
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
 
 	"github.com/derispewss/gonami-projects/internal/application"
 	"github.com/derispewss/gonami-projects/internal/domain"
+	"github.com/derispewss/gonami-projects/internal/format"
 	"github.com/derispewss/gonami-projects/internal/parser"
 	"go.mau.fi/whatsmeow/types"
 	"go.mau.fi/whatsmeow/types/events"
@@ -83,6 +85,11 @@ func (r *Router) Route(ctx context.Context, evt *events.Message) {
 		return
 	}
 
+	if cmd, ok := parser.DetectBudgetCommand(normalized); ok {
+		r.handleBudgetCommand(ctx, senderJID, cmd)
+		return
+	}
+
 	if parser.MayContainTransaction(normalized) {
 		r.handleTransaction(ctx, senderJID, pushName, text, evt.Info.ID)
 		return
@@ -131,10 +138,149 @@ func (r *Router) handleIntent(ctx context.Context, jid types.JID, text string) b
 	case parser.IntentHelp:
 		r.sender.SendText(ctx, jid, helpMessage())
 
+	case parser.IntentBudget:
+		res, err := r.app.Budget.Status(ctx, senderStr)
+		if err != nil {
+			slog.Error("budget status error", "error", err)
+			return true
+		}
+		r.sender.SendText(ctx, jid, replyBudgetStatus(res))
+
+	case parser.IntentInsight:
+		res, err := r.app.Insight.Get(ctx, senderStr)
+		if err != nil {
+			slog.Error("insight error", "error", err)
+			return true
+		}
+		r.sender.SendText(ctx, jid, replyInsights(res))
+
+	case parser.IntentExport:
+		wantPDF := !strings.Contains(text, "txt") && !strings.Contains(text, "teks")
+		res, err := r.app.Export.Run(ctx, senderStr, period, wantPDF)
+		if err != nil {
+			if errors.Is(err, domain.ErrNotFound) {
+				r.sender.SendText(ctx, jid, "Belum ada transaksi untuk diekspor.")
+				return true
+			}
+			slog.Error("export error", "error", err)
+			return true
+		}
+		if err := r.sender.SendDocument(ctx, jid, res.Filename, res.MimeType, res.Data); err != nil {
+			slog.Error("send export document failed", "error", err)
+		}
+
+	case parser.IntentWallet:
+		tokens := parser.NormalizeCommand(text)
+		switch {
+		case parser.HasAnyToken(tokens, "buat", "tambah", "bikin"):
+			name := walletNameAfter(tokens)
+			w, err := r.app.Wallet.Add(ctx, senderStr, name)
+			if err != nil {
+				r.sender.SendText(ctx, jid, "Format: *buat dompet [nama]*")
+				return true
+			}
+			r.sender.SendText(ctx, jid, fmt.Sprintf("👛 Dompet *%s* dibuat. Aktifkan dengan: pakai dompet %s", w.Name, w.Name))
+
+		case parser.HasAnyToken(tokens, "pakai", "ganti", "pindah"):
+			name := walletNameAfter(tokens)
+			w, err := r.app.Wallet.Switch(ctx, senderStr, name)
+			if err != nil {
+				r.sender.SendText(ctx, jid, "Dompet tidak ditemukan. Ketik *dompet* untuk melihat daftar.")
+				return true
+			}
+			r.sender.SendText(ctx, jid, fmt.Sprintf("✅ Transaksi berikutnya dicatat ke dompet *%s*.", w.Name))
+
+		case parser.HasAnyToken(tokens, "keluar", "matikan", "umum"):
+			_ = r.app.Wallet.Deactivate(ctx, senderStr)
+			r.sender.SendText(ctx, jid, "✅ Kembali ke dompet utama.")
+
+		default:
+			res, err := r.app.Wallet.List(ctx, senderStr)
+			if err != nil {
+				slog.Error("wallet list error", "error", err)
+				return true
+			}
+			r.sender.SendText(ctx, jid, replyWallets(res))
+		}
+
+	case parser.IntentKategori:
+		tokens := parser.NormalizeCommand(text)
+		if parser.HasAnyToken(tokens, "tambah", "buat", "bikin") {
+			rawName := strings.Join(tokensAfter(tokens, "kategori"), " ")
+			cat, err := r.app.Category.Add(ctx, senderStr, rawName)
+			if err != nil {
+				r.sender.SendText(ctx, jid, "Format: *tambah kategori [nama]*")
+				return true
+			}
+			label := "pengeluaran"
+			if cat.Type == domain.TypeIncome {
+				label = "pemasukan"
+			}
+			r.sender.SendText(ctx, jid, fmt.Sprintf("📂 Kategori *%s* (%s) siap dipakai.", cat.Name, label))
+			return true
+		}
+		res, err := r.app.Category.List(ctx, senderStr)
+		if err != nil {
+			slog.Error("category list error", "error", err)
+			return true
+		}
+		r.sender.SendText(ctx, jid, replyCategories(res))
+
 	default:
 		return false
 	}
 	return true
+}
+
+func (r *Router) handleBudgetCommand(ctx context.Context, jid types.JID, cmd *parser.BudgetCommand) {
+	senderStr := jid.String()
+	if cmd.Delete {
+		err := r.app.Budget.Delete(ctx, senderStr, cmd.Category)
+		if err != nil {
+			r.sender.SendText(ctx, jid, "Budget tidak ditemukan.")
+			return
+		}
+		r.sender.SendText(ctx, jid, fmt.Sprintf("🗑️ Budget *%s* dihapus.", cmd.Category))
+		return
+	}
+
+	b, err := r.app.Budget.Set(ctx, senderStr, cmd)
+	if err != nil {
+		if errors.Is(err, domain.ErrInvalidInput) {
+			r.sender.SendText(ctx, jid, "Format: *budget [kategori] [nominal]*\nContoh: budget makan 500rb")
+			return
+		}
+		slog.Error("budget set error", "error", err)
+		return
+	}
+	r.sender.SendText(ctx, jid,
+		fmt.Sprintf("🎯 Budget *%s*: %s/bulan\nKetik *budget* untuk cek pemakaian.", b.CategoryName, format.Rupiah(b.MonthlyLimit)))
+}
+
+func walletNameAfter(tokens []string) string {
+	for _, key := range []string{"dompet", "wallet", "rekening"} {
+		if idx := tokenIndex(tokens, key); idx >= 0 && idx+1 < len(tokens) {
+			return strings.Join(tokens[idx+1:], " ")
+		}
+	}
+	return ""
+}
+
+func tokensAfter(tokens []string, keyword string) []string {
+	idx := tokenIndex(tokens, keyword)
+	if idx < 0 || idx+1 >= len(tokens) {
+		return nil
+	}
+	return tokens[idx+1:]
+}
+
+func tokenIndex(tokens []string, target string) int {
+	for i, t := range tokens {
+		if t == target {
+			return i
+		}
+	}
+	return -1
 }
 
 func (r *Router) handleTransaction(ctx context.Context, jid types.JID, pushName, text, msgID string) {

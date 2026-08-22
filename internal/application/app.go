@@ -11,12 +11,17 @@ import (
 )
 
 type App struct {
-	Record  *RecordTransaction
-	Confirm *ConfirmDraft
-	Report  *GetReport
-	Balance *GetBalance
-	Manage  *ManageTransaction
-	Media   *ProcessMedia
+	Record   *RecordTransaction
+	Confirm  *ConfirmDraft
+	Report   *GetReport
+	Balance  *GetBalance
+	Manage   *ManageTransaction
+	Media    *ProcessMedia
+	Budget   *BudgetUC
+	Insight  *InsightUC
+	Export   *ExportUC
+	Wallet   *WalletUC
+	Category *ManageCategory
 }
 
 func NewApp(db *pgxpool.Pool, prs *parser.Parser, cfg *config.Config,
@@ -26,13 +31,20 @@ func NewApp(db *pgxpool.Pool, prs *parser.Parser, cfg *config.Config,
 	catRepo := repository.NewCategoryRepo(db)
 	txRepo := repository.NewTransactionRepo(db)
 	draftRepo := repository.NewDraftRepo(db)
+	budgetRepo := repository.NewBudgetRepo(db)
+	walletRepo := repository.NewWalletRepo(db)
 
 	app := &App{
-		Record:  NewRecordTransaction(userRepo, catRepo, txRepo, draftRepo, prs, cfg, aiClient),
-		Confirm: NewConfirmDraft(userRepo, txRepo, catRepo, draftRepo),
-		Report:  NewGetReport(userRepo, txRepo),
-		Balance: NewGetBalance(userRepo, txRepo),
-		Manage:  NewManageTransaction(userRepo, txRepo),
+		Record:   NewRecordTransaction(userRepo, catRepo, txRepo, draftRepo, prs, cfg, aiClient),
+		Confirm:  NewConfirmDraft(userRepo, txRepo, catRepo, draftRepo),
+		Report:   NewGetReport(userRepo, txRepo),
+		Balance:  NewGetBalance(userRepo, txRepo),
+		Manage:   NewManageTransaction(userRepo, txRepo),
+		Budget:   NewBudgetUC(userRepo, txRepo, budgetRepo),
+		Insight:  NewInsightUC(userRepo, txRepo),
+		Export:   NewExportUC(userRepo, txRepo),
+		Wallet:   NewWalletUC(userRepo, txRepo, walletRepo),
+		Category: NewManageCategory(userRepo, catRepo),
 	}
 
 	if aiClient != nil {

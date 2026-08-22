@@ -109,6 +109,7 @@ func (uc *RecordTransaction) FromParsed(ctx context.Context, jid, pushName strin
 			SourceType:      source,
 			SourceMessageID: msgID,
 			RawMessage:      rawContent,
+			WalletID:        user.ActiveWalletID,
 		}
 		if err := uc.txs.Create(ctx, tx); err != nil {
 			return nil, err

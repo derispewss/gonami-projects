@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
+	"sync/atomic"
 	"time"
 
 	"go.mau.fi/whatsmeow"
@@ -25,11 +27,13 @@ const (
 )
 
 type Sender struct {
-	wa *whatsmeow.Client
+	wa              *whatsmeow.Client
+	buttonsEnabled  bool
+	buttonsDisabled atomic.Bool
 }
 
-func NewSender(wa *whatsmeow.Client) *Sender {
-	return &Sender{wa: wa}
+func NewSender(wa *whatsmeow.Client, confirmButtons bool) *Sender {
+	return &Sender{wa: wa, buttonsEnabled: confirmButtons}
 }
 
 func (s *Sender) SendText(ctx context.Context, to types.JID, text string) error {
@@ -77,6 +81,10 @@ func (s *Sender) SendReaction(ctx context.Context, chat types.JID, msgID string,
 }
 
 func (s *Sender) SendConfirmButtons(ctx context.Context, to types.JID) error {
+	if !s.buttonsEnabled || s.buttonsDisabled.Load() {
+		return nil
+	}
+
 	msg := &waE2E.Message{
 		ButtonsMessage: &waE2E.ButtonsMessage{
 			ContentText: proto.String("Simpan transaksi ini?"),
@@ -97,9 +105,38 @@ func (s *Sender) SendConfirmButtons(ctx context.Context, to types.JID) error {
 
 	resp, err := s.wa.SendMessage(ctx, to, msg)
 	if err != nil {
+		if strings.Contains(err.Error(), "405") {
+			s.buttonsDisabled.Store(true)
+			slog.Info("server whatsapp menolak button message (akun non-business) — tombol dinonaktifkan untuk sesi ini")
+			return nil
+		}
 		return fmt.Errorf("send confirm buttons to %s: %w", to.String(), err)
 	}
 
 	slog.Debug("confirm buttons sent", "to", to.User, "message_id", resp.ID)
+	return nil
+}
+
+func (s *Sender) SendDocument(ctx context.Context, to types.JID, filename, mimeType string, data []byte) error {
+	upload, err := s.wa.Upload(ctx, data, whatsmeow.MediaDocument)
+	if err != nil {
+		return fmt.Errorf("upload document %s: %w", filename, err)
+	}
+
+	doc := &waE2E.DocumentMessage{
+		URL:        proto.String(upload.URL),
+		DirectPath: proto.String(upload.DirectPath),
+		Mimetype:   proto.String(mimeType),
+		Title:      proto.String(filename),
+		FileName:   proto.String(filename),
+		FileLength: proto.Uint64(uint64(len(data))),
+	}
+	msg := &waE2E.Message{DocumentMessage: doc}
+	resp, err := s.wa.SendMessage(ctx, to, msg)
+	if err != nil {
+		return fmt.Errorf("send document to %s: %w", to.String(), err)
+	}
+
+	slog.Debug("document sent", "to", to.User, "filename", filename, "message_id", resp.ID)
 	return nil
 }

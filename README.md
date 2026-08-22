@@ -26,6 +26,11 @@
 | Reaksi status | 👀 diproses → ✅ sukses / ❌ gagal | Umpan balik instan |
 | Draft + konfirmasi | balas `iya` / `tidak` | Simpan atau batal |
 | Laporan bebas gaya | `berapa pengeluaran bulan ini?` | Rekap otomatis |
+| Budget per kategori | `budget makan 500rb`, cek: `budget` | Progress bar + warning 80%/100% |
+| Insight & anomali | `insight` | Deteksi lonjakan & pengeluaran rutin |
+| Export laporan | `export` / `export pdf` | Dokumen .txt/.pdf bulan ini |
+| Multi-dompet | `buat dompet BCA`, `pakai dompet BCA` | Transaksi tertagih ke dompet aktif |
+| Kategori kustom | `tambah kategori skincare`, cek: `kategori` | Kategori pribadi selain bawaan |
 
 > **Cakupan:** bot hanya merespons **chat pribadi (DM)**. Pesan di grup,
 > list broadcast, newsletter, dan status diabaikan diam-diam — dukungan

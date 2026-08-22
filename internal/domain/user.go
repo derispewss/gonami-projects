@@ -7,10 +7,11 @@ import (
 )
 
 type User struct {
-	ID          uuid.UUID
-	WhatsAppJID string
-	Name        string
-	Currency    string
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID             uuid.UUID
+	WhatsAppJID    string
+	Name           string
+	Currency       string
+	ActiveWalletID *uuid.UUID
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }

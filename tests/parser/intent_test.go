@@ -93,3 +93,78 @@ func TestMatchConfirmation(t *testing.T) {
 		}
 	}
 }
+
+func TestDetectIntentAdvanced(t *testing.T) {
+	cases := []struct {
+		text string
+		want parser.CommandIntent
+		pd   parser.Period
+	}{
+		{"budget", parser.IntentBudget, parser.PeriodMonthly},
+		{"cek budget dong", parser.IntentBudget, parser.PeriodMonthly},
+		{"anggaran bulan ini", parser.IntentBudget, parser.PeriodMonthly},
+
+		{"insight", parser.IntentInsight, parser.PeriodMonthly},
+		{"analisa pengeluaran gue", parser.IntentInsight, parser.PeriodMonthly},
+		{"ada anomali nggak", parser.IntentInsight, parser.PeriodMonthly},
+		{"pengeluaran berulang", parser.IntentInsight, parser.PeriodMonthly},
+
+		{"export", parser.IntentExport, parser.PeriodMonthly},
+		{"ekspor minggu ini", parser.IntentExport, parser.PeriodWeekly},
+		{"unduh laporan hari ini", parser.IntentExport, parser.PeriodDaily},
+
+		{"dompet", parser.IntentWallet, parser.PeriodMonthly},
+		{"pakai dompet bca", parser.IntentWallet, parser.PeriodMonthly},
+		{"buat dompet ovo", parser.IntentWallet, parser.PeriodMonthly},
+
+		{"kategori", parser.IntentKategori, parser.PeriodMonthly},
+		{"tambah kategori skincare", parser.IntentKategori, parser.PeriodMonthly},
+
+		{"beli kopi 15k", parser.IntentNone, parser.PeriodMonthly},
+	}
+
+	for _, c := range cases {
+		got, pd := parser.DetectIntent(c.text)
+		if got != c.want || pd != c.pd {
+			t.Errorf("DetectIntent(%q) = (%v, %v), want (%v, %v)",
+				c.text, got, pd, c.want, c.pd)
+		}
+	}
+}
+
+func TestDetectBudgetCommand(t *testing.T) {
+	cases := []struct {
+		text     string
+		ok       bool
+		category string
+		amount   int64
+		del      bool
+	}{
+		{"budget makan 500rb", true, "makan", 500000, false},
+		{"budget transportasi 250k", true, "transportasi", 250000, false},
+		{"atur budget jajan bulanan 1000000", true, "jajan", 1000000, false},
+		{"budget kopi Rp50.000", true, "kopi", 50000, false},
+		{"hapus budget makan", true, "makan", 0, true},
+		{"budget", false, "", 0, false},
+		{"rekap bulan ini", false, "", 0, false},
+		{"beli kopi 15k", false, "", 0, false},
+	}
+
+	for _, c := range cases {
+		cmd, ok := parser.DetectBudgetCommand(c.text)
+		if ok != c.ok {
+			t.Errorf("DetectBudgetCommand(%q) ok = %v, want %v", c.text, ok, c.ok)
+			continue
+		}
+		if !ok {
+			continue
+		}
+		if cmd.Delete != c.del {
+			t.Errorf("DetectBudgetCommand(%q).Delete = %v, want %v", c.text, cmd.Delete, c.del)
+		}
+		if !c.del && (cmd.Category != c.category || cmd.Amount != c.amount) {
+			t.Errorf("DetectBudgetCommand(%q) = (%q, %d), want (%q, %d)",
+				c.text, cmd.Category, cmd.Amount, c.category, c.amount)
+		}
+	}
+}

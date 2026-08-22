@@ -92,7 +92,7 @@ func main() {
 
 	app := application.NewApp(db, prs, cfg, aiClient, store)
 
-	sender := whatsapp.NewSender(waClient.WA)
+	sender := whatsapp.NewSender(waClient.WA, cfg.WhatsAppConfirmButtons)
 	router := whatsapp.NewRouter(waClient, sender, app)
 	handler := whatsapp.NewHandler(router, sender)
 	waClient.SetHandler(handler)

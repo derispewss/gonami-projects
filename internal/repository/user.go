@@ -22,13 +22,13 @@ func (r *UserRepo) GetOrCreateByJID(ctx context.Context, jid, name string) (*dom
 		ON CONFLICT (whatsapp_jid) DO UPDATE SET
 			name = EXCLUDED.name,
 			updated_at = NOW()
-		RETURNING id, whatsapp_jid, name, currency, created_at, updated_at
+		RETURNING id, whatsapp_jid, name, currency, active_wallet_id, created_at, updated_at
 	`
 
 	user := &domain.User{}
 	err := r.db.QueryRow(ctx, query, jid, name).Scan(
 		&user.ID, &user.WhatsAppJID, &user.Name, &user.Currency,
-		&user.CreatedAt, &user.UpdatedAt,
+		&user.ActiveWalletID, &user.CreatedAt, &user.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err

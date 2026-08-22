@@ -156,6 +156,131 @@ Tanya apa aja, bebas gaya bahasanya:
 • _lihat transaksi terakhir_
 • _hapus transaksi terakhir_
 
+Fitur lanjutan:
+• _budget makan 500rb_ → atur budget, cek: _budget_
+• _insight_ → anomali & pengeluaran rutin
+• _export_ / _export pdf_ → unduh laporan bulan ini
+• _dompet_ → multi-dompet (buat dompet BCA, pakai dompet BCA)
+• _kategori_ → daftar kategori, tambah kategori skincare
+
 Balas "iya" untuk simpan draft, "tidak" untuk batal.
 Ketik *help* untuk melihat pesan ini lagi.`
+}
+
+func replyBudgetStatus(items []application.BudgetStatus) string {
+	if len(items) == 0 {
+		return "Belum ada budget.\nAtur dengan: *budget [kategori] [nominal]*\nContoh: budget makan 500rb"
+	}
+
+	var b strings.Builder
+	b.WriteString("🎯 Budget Bulan Ini\n\n")
+	for _, it := range items {
+		emoji := format.CategoryEmoji(it.Name)
+		bar := progressBar(it.Ratio)
+		status := ""
+		switch {
+		case it.Breach:
+			status = " ⚠️ lewat batas"
+		case it.Warned:
+			status = " ⏳ mendekati batas"
+		}
+		b.WriteString(fmt.Sprintf("%s %s\n", emoji, format.Truncate(it.Name, 14)))
+		b.WriteString(fmt.Sprintf("%s %s / %s (%d%%)%s\n\n",
+			bar, format.Rupiah(it.Spent), format.Rupiah(it.Limit),
+			int(it.Ratio*100), status))
+	}
+	return strings.TrimRight(b.String(), "\n")
+}
+
+func progressBar(ratio float64) string {
+	if ratio < 0 {
+		ratio = 0
+	}
+	filled := int(ratio * 10)
+	if filled > 10 {
+		filled = 10
+	}
+	return strings.Repeat("▓", filled) + strings.Repeat("░", 10-filled)
+}
+
+func replyInsights(res *application.InsightsResult) string {
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("💡 Insight %s\n\n", format.MonthYearID(res.Month)))
+
+	if !res.HasInsights {
+		b.WriteString("Belum ada pola menarik dari transaksimu.\nCatat lebih banyak transaksi dulu ya!")
+		return b.String()
+	}
+
+	if len(res.Anomalies) > 0 {
+		b.WriteString("⚠️ *Anomali pengeluaran*\n")
+		for _, a := range res.Anomalies {
+			b.WriteString(fmt.Sprintf("%s %s: %s (biasanya ~%s, %.1fx lipat)\n",
+				format.CategoryEmoji(a.Category),
+				format.Truncate(a.Category, 14),
+				format.Rupiah(a.Current),
+				format.Rupiah(a.Average),
+				a.Multiplier))
+		}
+		b.WriteString("\n")
+	}
+
+	if len(res.Recurring) > 0 {
+		b.WriteString("🔁 *Deteksi pengeluaran rutin*\n")
+		for _, r := range res.Recurring {
+			name := r.Description
+			if len(name) > 24 {
+				name = name[:21] + "..."
+			}
+			b.WriteString(fmt.Sprintf("• %s — ~%s/bulan (%dx)\n",
+				strings.Title(name), format.Rupiah(r.AvgAmount), r.Count))
+		}
+	}
+
+	return b.String()
+}
+
+func replyWallets(res *application.WalletSummaryResult) string {
+	if len(res.Wallets) == 0 {
+		return "Belum ada dompet tambahan.\nBuat dengan: *buat dompet [nama]*\nContoh: buat dompet BCA"
+	}
+
+	var b strings.Builder
+	b.WriteString("👛 Dompet Kamu\n\n")
+	for _, w := range res.Wallets {
+		marker := "○"
+		if res.ActiveID != nil && *res.ActiveID == w.ID {
+			marker = "●"
+		}
+		b.WriteString(fmt.Sprintf("%s %s — keluar bulan ini %s\n",
+			marker, w.Name, format.Rupiah(res.Spend[w.Name])))
+	}
+
+	b.WriteString("\n● = aktif. Ganti dengan: *pakai dompet [nama]*\nKembali ke utama: *dompet umum*")
+	return b.String()
+}
+
+func replyCategories(res *application.CategoryListResult) string {
+	var b strings.Builder
+	b.WriteString("📂 Kategori Tersedia\n\n")
+
+	b.WriteString("*Bawaan:*\n")
+	if len(res.Default) == 0 {
+		b.WriteString("(kosong)\n")
+	} else {
+		for _, c := range res.Default {
+			b.WriteString(fmt.Sprintf("%s %s\n", format.CategoryEmoji(c), c))
+		}
+	}
+
+	if len(res.Custom) > 0 {
+		b.WriteString("\n*Kustom:*\n")
+		for _, c := range res.Custom {
+			b.WriteString(fmt.Sprintf("%s %s\n", format.CategoryEmoji(c), c))
+		}
+		b.WriteString("\nTambah lagi: *tambah kategori [nama]*")
+	} else {
+		b.WriteString("\nTambah kategori sendiri: *tambah kategori [nama]*")
+	}
+	return b.String()
 }
