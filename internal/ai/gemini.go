@@ -11,16 +11,6 @@ import (
 	"google.golang.org/genai"
 )
 
-var (
-	receiptPrompt string
-
-	receiptDocumentPrompt string
-
-	fallbackChatPrompt string
-
-	statementTextPrompt string
-)
-
 type Gemini struct {
 	client  *genai.Client
 	model   string
