@@ -93,6 +93,17 @@ func (r *TransactionRepo) DeleteLast(ctx context.Context, userID uuid.UUID) (*do
 	return tx, nil
 }
 
+func (r *TransactionRepo) DeleteAllByUser(ctx context.Context, userID uuid.UUID) error {
+	_, err := r.db.Exec(ctx, `DELETE FROM transactions WHERE user_id = $1`, userID)
+	return err
+}
+
+func (r *TransactionRepo) CountByUser(ctx context.Context, userID uuid.UUID) (int64, error) {
+	var count int64
+	err := r.db.QueryRow(ctx, `SELECT COUNT(*) FROM transactions WHERE user_id = $1`, userID).Scan(&count)
+	return count, err
+}
+
 func (r *TransactionRepo) SumByType(ctx context.Context, userID uuid.UUID, from, to time.Time) (map[domain.TransactionType]int64, error) {
 	query := `
 		SELECT type, COALESCE(SUM(amount), 0)

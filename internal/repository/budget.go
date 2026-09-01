@@ -5,6 +5,7 @@ import (
 
 	"github.com/derispewss/gonami-projects/internal/domain"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -27,6 +28,27 @@ func (r *BudgetRepo) Upsert(ctx context.Context, b *domain.Budget) error {
 	`
 	return r.db.QueryRow(ctx, query, b.UserID, b.CategoryName, b.MonthlyLimit).
 		Scan(&b.ID, &b.CreatedAt, &b.UpdatedAt)
+}
+
+func (r *BudgetRepo) Get(ctx context.Context, userID uuid.UUID, categoryName string) (*domain.Budget, error) {
+	b := &domain.Budget{}
+	err := r.db.QueryRow(ctx,
+		`SELECT id, user_id, category_name, monthly_limit, created_at, updated_at
+		 FROM budgets WHERE user_id = $1 AND LOWER(category_name) = LOWER($2)`,
+		userID, categoryName).
+		Scan(&b.ID, &b.UserID, &b.CategoryName, &b.MonthlyLimit, &b.CreatedAt, &b.UpdatedAt)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, domain.ErrNotFound
+		}
+		return nil, err
+	}
+	return b, nil
+}
+
+func (r *BudgetRepo) DeleteByUser(ctx context.Context, userID uuid.UUID) error {
+	_, err := r.db.Exec(ctx, `DELETE FROM budgets WHERE user_id = $1`, userID)
+	return err
 }
 
 func (r *BudgetRepo) Delete(ctx context.Context, userID uuid.UUID, categoryName string) error {

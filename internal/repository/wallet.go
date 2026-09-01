@@ -75,3 +75,8 @@ func (r *WalletRepo) ClearActive(ctx context.Context, userID uuid.UUID) error {
 		userID)
 	return err
 }
+
+func (r *WalletRepo) DeleteByUser(ctx context.Context, userID uuid.UUID) error {
+	_, err := r.db.Exec(ctx, `DELETE FROM wallets WHERE user_id = $1`, userID)
+	return err
+}

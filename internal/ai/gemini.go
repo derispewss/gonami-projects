@@ -66,6 +66,11 @@ func (g *Gemini) generate(ctx context.Context, parts []*genai.Part, cfg *genai.G
 		slog.Warn("token saver: kuota harian habis — panggilan LLM ditolak")
 		return "", ErrBudgetExceeded
 	}
+	for _, p := range parts {
+		if p.InlineData != nil && len(p.InlineData.Data) == 0 {
+			return "", fmt.Errorf("data media kosong (0 bytes) dikirim ke gemini")
+		}
+	}
 	resp, err := g.client.Models.GenerateContent(ctx, g.model,
 		[]*genai.Content{{Parts: parts}}, cfg)
 	if err != nil {
@@ -100,8 +105,8 @@ func (g *Gemini) generateText(ctx context.Context, prompt string) (string, error
 
 func (g *Gemini) TranscribeAudio(ctx context.Context, data []byte, mimeType string) (string, error) {
 	parts := []*genai.Part{
-		{InlineData: &genai.Blob{Data: data, MIMEType: cleanMIME(mimeType)}},
 		{Text: sttPrompt},
+		{InlineData: &genai.Blob{Data: data, MIMEType: cleanMIME(mimeType)}},
 	}
 	out, err := g.generate(ctx, parts, &genai.GenerateContentConfig{Temperature: ptr(float32(0.1))})
 	if err != nil {
@@ -117,8 +122,8 @@ func (g *Gemini) ExtractReceipt(ctx context.Context, data []byte, mimeType strin
 		prompt = withToday(receiptDocumentPrompt, time.Now())
 	}
 	parts := []*genai.Part{
-		{InlineData: &genai.Blob{Data: data, MIMEType: mime}},
 		{Text: prompt},
+		{InlineData: &genai.Blob{Data: data, MIMEType: mime}},
 	}
 	out, err := g.generate(ctx, parts, &genai.GenerateContentConfig{
 		Temperature:      ptr(float32(0.1)),

@@ -82,3 +82,8 @@ func (r *CategoryRepo) ListAvailable(ctx context.Context, userID uuid.UUID) ([]d
 	}
 	return list, rows.Err()
 }
+
+func (r *CategoryRepo) DeleteCustomByUser(ctx context.Context, userID uuid.UUID) error {
+	_, err := r.db.Exec(ctx, `DELETE FROM categories WHERE user_id = $1`, userID)
+	return err
+}

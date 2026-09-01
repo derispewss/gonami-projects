@@ -168,3 +168,33 @@ func TestDetectBudgetCommand(t *testing.T) {
 		}
 	}
 }
+
+func TestDetectIntentReset(t *testing.T) {
+	got, _ := parser.DetectIntent("hapus semua data")
+	if got != parser.IntentReset {
+		t.Errorf("DetectIntent(hapus semua data) = %v, want IntentReset", got)
+	}
+	got, _ = parser.DetectIntent("hapus transaksi terakhir")
+	if got != parser.IntentHapus {
+		t.Errorf("DetectIntent(hapus transaksi terakhir) = %v, want IntentHapus", got)
+	}
+	got, _ = parser.DetectIntent("reset data gue")
+	if got != parser.IntentReset {
+		t.Errorf("DetectIntent(reset data gue) = %v, want IntentReset", got)
+	}
+}
+
+func TestDetectBudgetCommandAdjust(t *testing.T) {
+	cmd, ok := parser.DetectBudgetCommand("ubah budget makan 700rb")
+	if !ok || cmd.Category != "makan" || cmd.Amount != 700000 || cmd.Delete {
+		t.Errorf("DetectBudgetCommand(ubah budget makan 700rb) = %+v ok=%v, want cat=makan amt=700000", cmd, ok)
+	}
+	cmd, ok = parser.DetectBudgetCommand("revisi budget transportasi jadi 300k")
+	if !ok || cmd.Category != "transportasi" || cmd.Amount != 300000 {
+		t.Errorf("DetectBudgetCommand(revisi budget...) = %+v ok=%v", cmd, ok)
+	}
+	cmd, ok = parser.DetectBudgetCommand("budget makan 500rb")
+	if !ok || cmd.Category != "makan" || cmd.Amount != 500000 {
+		t.Errorf("DetectBudgetCommand(budget makan 500rb) = %+v ok=%v", cmd, ok)
+	}
+}

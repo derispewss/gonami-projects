@@ -158,10 +158,12 @@ Tanya apa aja, bebas gaya bahasanya:
 
 Fitur lanjutan:
 • _budget makan 500rb_ → atur budget, cek: _budget_
+• _ubah budget makan 700rb_ → sesuaikan budget yang sudah ada
 • _insight_ → anomali & pengeluaran rutin
 • _export_ / _export pdf_ → unduh laporan bulan ini
 • _dompet_ → multi-dompet (buat dompet BCA, pakai dompet BCA)
 • _kategori_ → daftar kategori, tambah kategori skincare
+• _hapus semua data_ → reset data dari awal (dengan konfirmasi)
 
 Balas "iya" untuk simpan draft, "tidak" untuk batal.
 Ketik *help* untuk melihat pesan ini lagi.`

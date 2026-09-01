@@ -20,6 +20,9 @@ func (p *ImageProcessor) Supports(mimeType string) bool {
 }
 
 func (p *ImageProcessor) Process(ctx context.Context, in Input) (*Output, error) {
+	if len(in.Data) == 0 {
+		return nil, fmt.Errorf("data gambar kosong (0 bytes)")
+	}
 	rec, err := p.client.ExtractReceipt(ctx, in.Data, in.MimeType)
 	if err != nil {
 		return nil, fmt.Errorf("ekstraksi struk gagal: %w", err)

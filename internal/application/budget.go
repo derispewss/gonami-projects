@@ -20,24 +20,29 @@ func NewBudgetUC(u *repository.UserRepo, t *repository.TransactionRepo,
 	return &BudgetUC{users: u, txs: t, budgets: b}
 }
 
-func (uc *BudgetUC) Set(ctx context.Context, jid string, cmd *parser.BudgetCommand) (*domain.Budget, error) {
+func (uc *BudgetUC) Set(ctx context.Context, jid string, cmd *parser.BudgetCommand) (*domain.Budget, bool, error) {
 	if cmd.Delete {
-		return nil, uc.Delete(ctx, jid, cmd.Category)
+		return nil, false, uc.Delete(ctx, jid, cmd.Category)
 	}
 	if cmd.Category == "" || cmd.Amount <= 0 {
-		return nil, domain.ErrInvalidInput
+		return nil, false, domain.ErrInvalidInput
 	}
 
 	user, err := uc.users.GetOrCreateByJID(ctx, jid, "")
 	if err != nil {
-		return nil, err
+		return nil, false, err
+	}
+
+	updated := false
+	if _, err := uc.budgets.Get(ctx, user.ID, cmd.Category); err == nil {
+		updated = true
 	}
 
 	b := &domain.Budget{UserID: user.ID, CategoryName: cmd.Category, MonthlyLimit: cmd.Amount}
 	if err := uc.budgets.Upsert(ctx, b); err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	return b, nil
+	return b, updated, nil
 }
 
 func (uc *BudgetUC) Delete(ctx context.Context, jid, category string) error {

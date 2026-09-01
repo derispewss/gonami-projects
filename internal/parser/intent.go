@@ -18,6 +18,7 @@ const (
 	IntentExport
 	IntentWallet
 	IntentKategori
+	IntentReset
 )
 
 type Period uint8
@@ -129,6 +130,11 @@ func DetectIntent(text string) (CommandIntent, Period) {
 	period := detectPeriod(tokens)
 
 	switch {
+
+	case (hasAny(tokens, "hapus", "apus", "delete") && hasAny(tokens, "semua", "data")) ||
+		hasAny(tokens, "reset") || hasBigram(tokens, "bersihkan semua") ||
+		hasBigram(tokens, "hapus semua"):
+		return IntentReset, period
 
 	case hasAny(tokens, "hapus", "apus", "delete") &&
 		(hasAny(tokens, "terakhir") || hasAny(tokens, "transaksi")):
@@ -258,7 +264,8 @@ func removeCommandVerbs(tokens []string) []string {
 		switch t {
 		case "set", "atur", "pasang", "ubah", "buat", "tambah", "bikin",
 			"untuk", "per", "bulan", "bulanan", "kategori", "maksimal",
-			"max", "limit", "hapus", "apus", "delete", "buang":
+			"max", "limit", "hapus", "apus", "delete", "buang",
+			"revisi", "jadi", "menjadi":
 		default:
 			out = append(out, t)
 		}

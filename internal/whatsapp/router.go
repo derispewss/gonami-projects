@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
 
 	"github.com/derispewss/gonami-projects/internal/application"
 	"github.com/derispewss/gonami-projects/internal/domain"
@@ -16,16 +17,19 @@ import (
 )
 
 type Router struct {
-	client *Client
-	sender *Sender
-	app    *application.App
+	client       *Client
+	sender       *Sender
+	app          *application.App
+	pendingReset map[string]bool
+	resetMu      sync.Mutex
 }
 
 func NewRouter(client *Client, sender *Sender, app *application.App) *Router {
 	return &Router{
-		client: client,
-		sender: sender,
-		app:    app,
+		client:       client,
+		sender:       sender,
+		app:          app,
+		pendingReset: make(map[string]bool),
 	}
 }
 
@@ -65,6 +69,15 @@ func (r *Router) Route(ctx context.Context, evt *events.Message) {
 	normalized := strings.TrimSpace(strings.ToLower(text))
 
 	if yes, decided := parser.MatchConfirmation(normalized); decided {
+		if r.isPendingReset(senderJID) {
+			if yes {
+				r.executeReset(ctx, senderJID)
+			} else {
+				r.clearPendingReset(senderJID)
+				r.sender.SendText(ctx, senderJID, "Oke, data tetap aman. 👍")
+			}
+			return
+		}
 		if yes {
 			if r.confirmDraft(ctx, senderJID) {
 				return
@@ -115,6 +128,11 @@ func (r *Router) handleIntent(ctx context.Context, jid types.JID, text string) b
 			return true
 		}
 		r.sender.SendText(ctx, jid, "🗑️ Transaksi terakhir berhasil dihapus:\n"+tx.Description)
+
+	case parser.IntentReset:
+		r.setPendingReset(jid)
+		r.sender.SendText(ctx, jid, "⚠️ Kamu akan menghapus *SEMUA* data (transaksi, budget, dompet, kategori kustom). Tindakan ini tidak bisa dibatalkan.\n\nBalas *ya* untuk lanjut, *tidak* untuk batal.")
+		return true
 
 	case parser.IntentRiwayat:
 		txs, _ := r.app.Manage.GetLastTransactions(ctx, senderStr, 5)
@@ -244,17 +262,21 @@ func (r *Router) handleBudgetCommand(ctx context.Context, jid types.JID, cmd *pa
 		return
 	}
 
-	b, err := r.app.Budget.Set(ctx, senderStr, cmd)
+	b, updated, err := r.app.Budget.Set(ctx, senderStr, cmd)
 	if err != nil {
 		if errors.Is(err, domain.ErrInvalidInput) {
-			r.sender.SendText(ctx, jid, "Format: *budget [kategori] [nominal]*\nContoh: budget makan 500rb")
+			r.sender.SendText(ctx, jid, "Format: *budget [kategori] [nominal]*\nContoh: budget makan 500rb\nUbah: ini juga untuk menyesuaikan budget lama (cek *budget*).")
 			return
 		}
 		slog.Error("budget set error", "error", err)
 		return
 	}
+	action := "dibuat"
+	if updated {
+		action = "diubah"
+	}
 	r.sender.SendText(ctx, jid,
-		fmt.Sprintf("🎯 Budget *%s*: %s/bulan\nKetik *budget* untuk cek pemakaian.", b.CategoryName, format.Rupiah(b.MonthlyLimit)))
+		fmt.Sprintf("🎯 Budget *%s* %s: %s/bulan\nKetik *budget* untuk cek pemakaian.", b.CategoryName, action, format.Rupiah(b.MonthlyLimit)))
 }
 
 func walletNameAfter(tokens []string) string {
@@ -366,6 +388,35 @@ func (r *Router) confirmDraft(ctx context.Context, jid types.JID) bool {
 		return true
 	}
 	return false
+}
+
+func (r *Router) setPendingReset(jid types.JID) {
+	r.resetMu.Lock()
+	defer r.resetMu.Unlock()
+	r.pendingReset[jid.String()] = true
+}
+
+func (r *Router) clearPendingReset(jid types.JID) {
+	r.resetMu.Lock()
+	defer r.resetMu.Unlock()
+	delete(r.pendingReset, jid.String())
+}
+
+func (r *Router) isPendingReset(jid types.JID) bool {
+	r.resetMu.Lock()
+	defer r.resetMu.Unlock()
+	return r.pendingReset[jid.String()]
+}
+
+func (r *Router) executeReset(ctx context.Context, jid types.JID) {
+	r.clearPendingReset(jid)
+	_, err := r.app.ResetData.DeleteAll(ctx, jid.String())
+	if err != nil {
+		slog.Error("error reset data", "error", err)
+		r.sender.SendText(ctx, jid, "⚠️ Gagal menghapus data. Coba lagi beberapa saat.")
+		return
+	}
+	r.sender.SendText(ctx, jid, "✅ Semua data berhasil dihapus. Aku siap dicatat ulang dari nol!")
 }
 
 func (r *Router) rejectDraft(ctx context.Context, jid types.JID) bool {
