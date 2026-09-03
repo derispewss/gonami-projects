@@ -101,7 +101,7 @@ func DetectCategory(lower string, txType string) categoryResult {
 	if txType == "expense" {
 
 		for _, b := range brands {
-			if strings.Contains(lower, b.Keyword) {
+			if strings.Contains(lower, b.Keyword) || fuzzyMatchWord(lower, b.Keyword, 1) {
 				return categoryResult{Name: b.Category, Merchant: b.Merchant, Matched: true}
 			}
 		}
@@ -119,7 +119,7 @@ func DetectCategory(lower string, txType string) categoryResult {
 
 	for _, rule := range rules {
 		for _, w := range rule.Words {
-			if strings.Contains(lower, w) {
+			if strings.Contains(lower, w) || fuzzyMatchWord(lower, w, 1) {
 				return categoryResult{Name: rule.Name, Matched: true}
 			}
 		}

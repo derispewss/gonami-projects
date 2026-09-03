@@ -39,16 +39,54 @@ func replySaved(tx *domain.Transaction) string {
 
 func replyDraftConfirm(out *application.RecordOutcome) string {
 	var b strings.Builder
-	b.WriteString("Saya menemukan transaksi:\n\n")
-
-	emoji := format.CategoryEmoji(out.Parsed.Category)
-	if out.Parsed.Category == "" {
-		emoji = "📦"
+	if len(out.Parsed) > 1 {
+		b.WriteString(fmt.Sprintf("🕵️‍♂️ Saya menemukan *%d transaksi*:\n\n", len(out.Parsed)))
+	} else {
+		b.WriteString("Saya menemukan transaksi:\n\n")
 	}
 
-	b.WriteString(fmt.Sprintf("%s %s — %s\n\n", emoji, out.Parsed.Description, format.Rupiah(out.Parsed.Amount)))
-	b.WriteString("Simpan transaksi ini? (Balas: iya / tidak)")
+	for i, res := range out.Parsed {
+		if len(out.Parsed) > 1 {
+			b.WriteString(fmt.Sprintf("*%d.* ", i+1))
+		}
+		emoji := format.CategoryEmoji(res.Category)
+		if res.Category == "" {
+			emoji = "📦"
+		}
+		b.WriteString(fmt.Sprintf("%s %s — %s\n", emoji, res.Description, format.Rupiah(res.Amount)))
+	}
 
+	var total int64
+	for _, res := range out.Parsed {
+		total += res.Amount
+	}
+	if len(out.Parsed) > 1 {
+		b.WriteString("\n──────────────\n")
+		b.WriteString(fmt.Sprintf("Total: %s\n", format.Rupiah(total)))
+	}
+
+	b.WriteString("\nSimpan semua transaksi ini? (Balas: iya / tidak)")
+
+	return b.String()
+}
+
+func replySavedBatch(txs []*domain.Transaction) string {
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("✅ *%d transaksi dicatat.*\n\n", len(txs)))
+	for i, tx := range txs {
+		emoji := format.CategoryEmoji(tx.CategoryName)
+		if tx.CategoryName == "" {
+			emoji = "📦"
+		}
+		sign := "💸"
+		switch tx.Type {
+		case domain.TypeIncome:
+			sign = "💰"
+		case domain.TypeTransfer:
+			sign = "🔄"
+		}
+		b.WriteString(fmt.Sprintf("*%d.* %s %s — %s %s\n", i+1, emoji, tx.Description, sign, format.Rupiah(tx.Amount)))
+	}
 	return b.String()
 }
 

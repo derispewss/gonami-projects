@@ -80,12 +80,26 @@ func main() {
 			slog.Warn("gagal inisialisasi Gemini — fitur media dinonaktifkan", "error", err)
 		} else {
 			aiClient = gemini
+
+			txModel := cfg.GeminiModel
 			if cfg.GeminiModelTx != "" {
-				slog.Info("Gemini aktif", "model", cfg.GeminiModel,
-					"model_text", cfg.GeminiModelTx, "budget_harian", cfg.LLMDailyBudget)
+				txModel = cfg.GeminiModelTx
+			}
+			slog.Info("Gemini aktif", "model", cfg.GeminiModel,
+				"model_text", txModel, "budget_harian", cfg.LLMDailyBudget)
+
+			if cfg.GroqAPIKey != "" {
+				groq := ai.NewGroq(ai.GroqConfig{
+					APIKey:  cfg.GroqAPIKey,
+					BaseURL: cfg.GroqBaseURL,
+					Model:   cfg.GroqModel,
+					Whisper: cfg.GroqModelWhisper,
+				})
+				aiClient = ai.NewFallbackClient(gemini, groq)
+				slog.Info("Groq cadangan aktif — fallback saat Gemini limit/error",
+					"model", cfg.GroqModel, "whisper", cfg.GroqModelWhisper)
 			} else {
-				slog.Info("Gemini aktif", "model", cfg.GeminiModel,
-					"budget_harian", cfg.LLMDailyBudget)
+				slog.Info("GROQ_API_KEY tidak diset — fallback API nonaktif (pakai parser lokal)")
 			}
 		}
 	}

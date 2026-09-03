@@ -355,12 +355,12 @@ func (r *Router) handleMedia(ctx context.Context, evt *events.Message, kind Medi
 		r.replyOutcome(ctx, jid, out)
 
 	case MediaImage, MediaPDF:
-		var outs []*application.RecordOutcome
+		var out *application.RecordOutcome
 		switch kind {
 		case MediaImage:
-			outs, err = r.app.Media.FromImage(ctx, jid.String(), evt.Info.PushName, data, mime, evt.Info.ID)
+			out, err = r.app.Media.FromImage(ctx, jid.String(), evt.Info.PushName, data, mime, evt.Info.ID)
 		case MediaPDF:
-			outs, err = r.app.Media.FromPDF(ctx, jid.String(), evt.Info.PushName, data, mime, evt.Info.ID)
+			out, err = r.app.Media.FromPDF(ctx, jid.String(), evt.Info.PushName, data, mime, evt.Info.ID)
 		}
 		if err != nil {
 			slog.Error("error processing media", "kind", kind, "error", err)
@@ -368,24 +368,13 @@ func (r *Router) handleMedia(ctx context.Context, evt *events.Message, kind Medi
 			r.sender.SendText(ctx, jid, "⚠️ Terjadi kesalahan internal saat memproses media.")
 			return
 		}
-		if len(outs) == 0 {
-			react(ReactionFailed)
-			return
-		}
-		saved := 0
-		for _, out := range outs {
-			if out.Status == application.RecordSaved || out.Status == application.RecordDraft {
-				saved++
-			}
-		}
-		if saved > 0 {
+		switch out.Status {
+		case application.RecordSaved, application.RecordDraft:
 			react(ReactionSuccess)
-		} else {
+		default:
 			react(ReactionFailed)
 		}
-		for _, out := range outs {
-			r.replyOutcome(ctx, jid, out)
-		}
+		r.replyOutcome(ctx, jid, out)
 	}
 }
 
@@ -398,15 +387,21 @@ func (r *Router) replyOutcome(ctx context.Context, jid types.JID, out *applicati
 		if err := r.sender.SendConfirmButtons(ctx, jid); err != nil {
 			slog.Warn("gagal kirim tombol konfirmasi", "error", err)
 		}
+	case application.RecordVisionUnavailable:
+		r.sender.SendText(ctx, jid, "⚠️ Maaf, fitur baca media (foto/PDF) sedang penuh atau server AI sedang sibuk. Mohon ketik transaksinya secara manual ya. Terima kasih! 🙏")
 	case application.RecordUnclear:
 		slog.Info("transaksi tidak dikenali — pesan diabaikan tanpa balasan")
 	}
 }
 
 func (r *Router) confirmDraft(ctx context.Context, jid types.JID) bool {
-	tx, err := r.app.Confirm.Confirm(ctx, jid.String())
+	txs, err := r.app.Confirm.Confirm(ctx, jid.String())
 	if err == nil {
-		r.sender.SendText(ctx, jid, replySaved(tx))
+		if len(txs) == 1 {
+			r.sender.SendText(ctx, jid, replySaved(txs[0]))
+		} else {
+			r.sender.SendText(ctx, jid, replySavedBatch(txs))
+		}
 		return true
 	}
 	if !errors.Is(err, domain.ErrNotFound) {

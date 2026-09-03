@@ -34,7 +34,7 @@ func (r *BudgetRepo) Get(ctx context.Context, userID uuid.UUID, categoryName str
 	b := &domain.Budget{}
 	err := r.db.QueryRow(ctx,
 		`SELECT id, user_id, category_name, monthly_limit, created_at, updated_at
-		 FROM budgets WHERE user_id = $1 AND LOWER(category_name) = LOWER($2)`,
+		FROM budgets WHERE user_id = $1 AND LOWER(category_name) = LOWER($2)`,
 		userID, categoryName).
 		Scan(&b.ID, &b.UserID, &b.CategoryName, &b.MonthlyLimit, &b.CreatedAt, &b.UpdatedAt)
 	if err != nil {

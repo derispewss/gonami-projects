@@ -32,10 +32,11 @@ type typeMatch struct {
 }
 
 func DetectType(lower string) typeMatch {
-	for _, w := range passiveIncomeWords {
-		if strings.Contains(lower, w) {
-			return typeMatch{Type: "income", Explicit: true}
-		}
+	// Stem finance verbs so affixed forms ("dibelikan", "membelikan") match.
+	stemmed := stemSentence(lower)
+
+	if stemsAny(stemmed, passiveIncomeWords) {
+		return typeMatch{Type: "income", Explicit: true}
 	}
 
 	if hasTransferWithDestination(lower) {
@@ -43,18 +44,28 @@ func DetectType(lower string) typeMatch {
 	}
 
 	for _, w := range incomeWords {
-		if containsWord(lower, w) {
+		if containsWord(stemmed, w) || containsWord(lower, w) {
 			return typeMatch{Type: "income", Explicit: true}
 		}
 	}
 
 	for _, w := range expenseWords {
-		if containsWord(lower, w) {
+		if containsWord(stemmed, w) || containsWord(lower, w) {
 			return typeMatch{Type: "expense", Explicit: true}
 		}
 	}
 
 	return typeMatch{Type: "expense", Explicit: false}
+}
+
+// stemsAny reports whether any keyword appears in the stemmed text.
+func stemsAny(stemmed string, keywords []string) bool {
+	for _, w := range keywords {
+		if containsWord(stemmed, w) {
+			return true
+		}
+	}
+	return false
 }
 
 func hasTransferWithDestination(lower string) bool {

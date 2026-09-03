@@ -27,6 +27,11 @@ type Config struct {
 	GeminiModel   string
 	GeminiModelTx string
 
+	GroqAPIKey       string
+	GroqModel        string
+	GroqModelWhisper string
+	GroqBaseURL      string
+
 	LLMDailyBudget     int
 	LLMMaxOutputTokens int32
 
@@ -65,6 +70,11 @@ func Load() (*Config, error) {
 	cfg.GeminiAPIKey = getEnv("GEMINI_API_KEY", "")
 	cfg.GeminiModel = getEnv("GEMINI_MODEL", "gemini-2.0-flash")
 	cfg.GeminiModelTx = getEnv("GEMINI_MODEL_TEXT", "")
+
+	cfg.GroqAPIKey = getEnv("GROQ_API_KEY", "")
+	cfg.GroqModel = getEnv("GROQ_MODEL", "llama-3.3-70b-versatile")
+	cfg.GroqModelWhisper = getEnv("GROQ_WHISPER_MODEL", "whisper-large-v3")
+	cfg.GroqBaseURL = getEnv("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
 
 	cfg.LLMDailyBudget = getEnvInt("LLM_DAILY_BUDGET", 300)
 	cfg.LLMMaxOutputTokens = int32(getEnvInt("LLM_MAX_OUTPUT_TOKENS", 150))

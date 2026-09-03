@@ -17,7 +17,8 @@
 | Fitur | Contoh | Hasil |
 |---|---|---|
 | Catat transaksi natural | `beli kopi 15k` | Expense Rp15.000 tersimpan |
-| **Multi-item auto-sum** | `aku beli ketoprak 25k adn esteh 3k` | Satu transaksi Rp28.000 |
+| **Multi-transaksi teks** | `aku beli ketoprak 25k dan esteh 3k` | 2 transaksi terpisah (draft konfirmasi) |
+| **Kuantitas** | `beli kopi 5k 2 gelas` | Expense Rp10.000 (5k × 2) |
 | Angka terbilang & typo | `bayar listrik dua juta kemarin` | Expense Rp2.000.000, tanggal kemarin |
 | Transfer + tujuan | `transfer 50k ke Budi` | Transfer → Budi |
 | Voice note | 🎤 "jajan bakso sepuluh ribu" | STT Gemini → dicatat |
@@ -63,11 +64,22 @@ flowchart TD
 ```
 
 **Token saver:** circuit breaker kuota harian (`LLM_DAILY_BUDGET`, reset tiap ganti hari WIB).
-Kuota habis → panggilan LLM ditolak → pesan diamkan. Bot tak akan makan kuota tak terkendali.
+Kuota habis → panggilan Gemini ditolak → bot otomatis beralih ke **Groq fallback** (jika `GROQ_API_KEY`
+diset) untuk teks & voice note, atau ke **parser lokal** untuk teks. Bot tak pernah diam total.
 
-**Multi-item safety:** hanya nominal berformat aman (`25k`, `10rb`, `2jt`, `25.000`, `Rp…`)
-yang dijumlahkan — nomor rekening/telepon dikecualikan; wajib ada kata sambung
-(`dan/adn/dn/plus/&/+`) antar item.
+**Fallback berlapis (resilience):**
+1. **Gemini** — provider utama (teks, STT, vision).
+2. **Groq** — cloud fallback saat Gemini 429/quota/network (teks Llama-3 & STT Whisper). Opsional.
+3. **Parser lokal** — Layer-1 offline (regex + fuzzy + stemming) untuk teks, selalu jalan tanpa API.
+Media (foto/PDF) yang tak bisa diproses saat semua provider vision habis akan dibalas pesan ramah.
+
+**Multi-transaksi teks:** nominal aman (`25k`, `10rb`, `2jt`, `25.000`, `Rp…`) dipecah menjadi
+transaksi terpisah bila dipisah kata sambung (`dan/adn/dn/plus/&/+`) — misal
+`beli mie goreng 7k dan esteh 3k` menjadi 2 transaksi. Selalu lewat **draft konfirmasi**.
+Nomor rekening/telepon dikecualikan dari pengecekan amount.
+
+**Kuantitas:** pola `harga N satuan` setelah nominal akan mengalikan harga
+(`beli kopi 5k 2 gelas` → Rp10.000). Satuan: gelas, porsi, buah, bungkus, botol, dll.
 
 **Pipeline media** (voice note / foto struk / PDF):
 

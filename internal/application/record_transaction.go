@@ -18,16 +18,18 @@ import (
 type RecordStatus string
 
 const (
-	RecordSaved   RecordStatus = "saved"
-	RecordDraft   RecordStatus = "draft"
-	RecordUnclear RecordStatus = "unclear"
+	RecordSaved             RecordStatus = "saved"
+	RecordDraft             RecordStatus = "draft"
+	RecordUnclear           RecordStatus = "unclear"
+	RecordVisionUnavailable RecordStatus = "vision_unavailable"
 )
 
 type RecordOutcome struct {
 	Status  RecordStatus
 	Tx      *domain.Transaction
+	Txs     []*domain.Transaction
 	Draft   *domain.TransactionDraft
-	Parsed  *parser.Result
+	Parsed  []*parser.Result
 	Message string
 }
 
@@ -50,43 +52,59 @@ func NewRecordTransaction(
 }
 
 func (uc *RecordTransaction) FromText(ctx context.Context, jid, pushName, text, msgID string) (*RecordOutcome, error) {
-	return uc.FromParsed(ctx, jid, pushName, nil, domain.SourceText, text, msgID)
+	results, err := parser.ParseMultiple(text, wibNow())
+	if err != nil {
+		if errors.Is(err, parser.ErrNotTransaction) {
+			return &RecordOutcome{Status: RecordUnclear}, nil
+		}
+		return nil, err
+	}
+	if len(results) == 0 {
+		return &RecordOutcome{Status: RecordUnclear}, nil
+	}
+
+	// Fallback LLM layer-2 for low-confidence single transactions.
+	fromLLM := false
+	if len(results) == 1 && results[0].Confidence < uc.cfg.ConfidenceAskConfirm {
+		if cand := uc.llmFallback(ctx, results[0], text, wibNow()); cand != nil {
+			slog.Info("layer-2 llm berhasil mengekstrak transaksi",
+				"amount", cand.Amount, "confidence", cand.Confidence)
+			results = []*parser.Result{cand}
+			fromLLM = true
+		}
+	}
+
+	if len(results) == 1 && results[0].Confidence >= uc.cfg.ConfidenceAutoSave &&
+		!results[0].NeedsConfirmation() && !fromLLM {
+		return uc.saveDirect(ctx, jid, pushName, results[0], domain.SourceText, text, msgID)
+	}
+
+	if len(results) == 1 && results[0].Confidence < uc.cfg.ConfidenceAskConfirm {
+		return &RecordOutcome{Status: RecordUnclear}, nil
+	}
+
+	return uc.createDraft(ctx, jid, pushName, results, domain.SourceText, text, msgID)
 }
 
+// FromParsed records a batch of pre-parsed results (from media) into a single
+// draft that requires user approval. Media is never auto-saved.
 func (uc *RecordTransaction) FromParsed(ctx context.Context, jid, pushName string,
+	results []*parser.Result, source domain.SourceType, rawContent, msgID string) (*RecordOutcome, error) {
+
+	if len(results) == 0 {
+		return &RecordOutcome{Status: RecordUnclear}, nil
+	}
+	return uc.createDraft(ctx, jid, pushName, results, source, rawContent, msgID)
+}
+
+func (uc *RecordTransaction) saveDirect(ctx context.Context, jid, pushName string,
 	res *parser.Result, source domain.SourceType, rawContent, msgID string) (*RecordOutcome, error) {
 
 	user, err := uc.users.GetOrCreateByJID(ctx, jid, pushName)
 	if err != nil {
 		return nil, err
 	}
-
 	_ = uc.drafts.CancelAllPending(ctx, user.ID)
-
-	fromLLM := false
-	loc, _ := time.LoadLocation("Asia/Jakarta")
-	now := time.Now().In(loc)
-
-	if res == nil {
-		parsed, perr := uc.prs.Parse(ctx, rawContent, now)
-		if perr != nil && perr != parser.ErrNotTransaction {
-			return nil, perr
-		}
-		res = parsed
-	}
-
-	if (res == nil || res.Confidence < uc.cfg.ConfidenceAskConfirm) && source == domain.SourceText {
-		if cand := uc.llmFallback(ctx, rawContent, now); cand != nil {
-			slog.Info("layer-2 llm berhasil mengekstrak transaksi",
-				"amount", cand.Amount, "confidence", cand.Confidence)
-			res = cand
-			fromLLM = true
-		}
-	}
-
-	if res == nil || res.Confidence < uc.cfg.ConfidenceAskConfirm {
-		return &RecordOutcome{Status: RecordUnclear}, nil
-	}
 
 	var catID *uuid.UUID
 	if res.Category != "" {
@@ -96,45 +114,63 @@ func (uc *RecordTransaction) FromParsed(ctx context.Context, jid, pushName strin
 		}
 	}
 
-	if !fromLLM && res.Confidence >= uc.cfg.ConfidenceAutoSave {
-		tx := &domain.Transaction{
-			UserID:          user.ID,
-			Type:            res.Type,
-			Amount:          res.Amount,
-			Description:     res.Description,
-			CategoryID:      catID,
-			CategoryName:    res.Category,
-			Merchant:        res.Merchant,
-			TransactionDate: res.Date,
-			SourceType:      source,
-			SourceMessageID: msgID,
-			RawMessage:      rawContent,
-			WalletID:        user.ActiveWalletID,
-		}
-		if err := uc.txs.Create(ctx, tx); err != nil {
-			return nil, err
-		}
-		slog.Info("transaction auto-saved", "tx_id", tx.ID, "user_id", user.ID, "source", source)
-		return &RecordOutcome{Status: RecordSaved, Tx: tx, Parsed: res}, nil
+	tx := &domain.Transaction{
+		UserID:          user.ID,
+		Type:            res.Type,
+		Amount:          res.Amount,
+		Description:     res.Description,
+		CategoryID:      catID,
+		CategoryName:    res.Category,
+		Merchant:        res.Merchant,
+		TransactionDate: res.Date,
+		SourceType:      source,
+		SourceMessageID: msgID,
+		RawMessage:      rawContent,
+		WalletID:        user.ActiveWalletID,
 	}
+	if err := uc.txs.Create(ctx, tx); err != nil {
+		return nil, err
+	}
+	slog.Info("transaction auto-saved", "tx_id", tx.ID, "user_id", user.ID, "source", source)
+	return &RecordOutcome{Status: RecordSaved, Tx: tx, Parsed: []*parser.Result{res}}, nil
+}
 
-	extracted, _ := json.Marshal(res)
+func (uc *RecordTransaction) createDraft(ctx context.Context, jid, pushName string,
+	results []*parser.Result, source domain.SourceType, rawContent, msgID string) (*RecordOutcome, error) {
+
+	user, err := uc.users.GetOrCreateByJID(ctx, jid, pushName)
+	if err != nil {
+		return nil, err
+	}
+	_ = uc.drafts.CancelAllPending(ctx, user.ID)
+
+	extracted, _ := json.Marshal(results)
+
+	conf := results[0].Confidence
 	draft := &domain.TransactionDraft{
 		UserID:        user.ID,
 		SourceType:    source,
 		RawContent:    rawContent,
 		ExtractedData: extracted,
-		Confidence:    res.Confidence,
+		Confidence:    conf,
 		Status:        domain.DraftPending,
 		ExpiresAt:     time.Now().Add(time.Duration(uc.cfg.DraftExpiryMinutes) * time.Minute),
 	}
-
 	if err := uc.drafts.Create(ctx, draft); err != nil {
 		return nil, err
 	}
 
-	slog.Info("draft created", "draft_id", draft.ID, "user_id", user.ID, "source", source)
-	return &RecordOutcome{Status: RecordDraft, Draft: draft, Parsed: res}, nil
+	slog.Info("draft created", "draft_id", draft.ID, "user_id", user.ID,
+		"source", source, "count", len(results))
+	return &RecordOutcome{Status: RecordDraft, Draft: draft, Parsed: results}, nil
+}
+
+var wibNow = func() time.Time {
+	loc, err := time.LoadLocation("Asia/Jakarta")
+	if err != nil {
+		loc = time.FixedZone("WIB", 7*3600)
+	}
+	return time.Now().In(loc)
 }
 
 var wibLoc = func() *time.Location {
@@ -145,7 +181,7 @@ var wibLoc = func() *time.Location {
 	return loc
 }()
 
-func (uc *RecordTransaction) llmFallback(ctx context.Context, text string, now time.Time) *parser.Result {
+func (uc *RecordTransaction) llmFallback(ctx context.Context, base *parser.Result, text string, now time.Time) *parser.Result {
 	if uc.ai == nil || !parser.MayContainTransaction(text) {
 		return nil
 	}

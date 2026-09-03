@@ -3,11 +3,13 @@ package application
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
 	"time"
 
+	"github.com/derispewss/gonami-projects/internal/ai"
 	"github.com/derispewss/gonami-projects/internal/domain"
 	"github.com/derispewss/gonami-projects/internal/media"
 	"github.com/derispewss/gonami-projects/internal/parser"
@@ -59,11 +61,11 @@ func (uc *ProcessMedia) FromVoiceNote(ctx context.Context, jid, pushName string,
 	}
 
 	slog.Info("voice note ditranscribe", "msg_id", msgID, "transcript", transcript)
-	return uc.record.FromParsed(ctx, jid, pushName, nil, domain.SourceAudio, transcript, msgID)
+	return uc.record.FromText(ctx, jid, pushName, transcript, msgID)
 }
 
 func (uc *ProcessMedia) FromImage(ctx context.Context, jid, pushName string,
-	data []byte, mimeType, msgID string) ([]*RecordOutcome, error) {
+	data []byte, mimeType, msgID string) (*RecordOutcome, error) {
 
 	if err := uc.archive(ctx, jid, "image", data, mimeType); err != nil {
 		slog.Warn("gagal arsip gambar", "error", err)
@@ -71,20 +73,25 @@ func (uc *ProcessMedia) FromImage(ctx context.Context, jid, pushName string,
 
 	out, err := uc.image.Process(ctx, media.Input{Data: data, MimeType: mimeType})
 	if err != nil {
+		if errors.Is(err, ai.ErrVisionExhausted) {
+			slog.Warn("vision habis/limit — kirim pesan ramah", "error", err)
+			return &RecordOutcome{Status: RecordVisionUnavailable}, nil
+		}
 		slog.Warn("vision gagal — pesan diabaikan", "error", err)
-		return nil, nil
+		return &RecordOutcome{Status: RecordUnclear}, nil
 	}
-	if len(out.Receipts) == 0 {
+	results := receiptsToResults(out.Receipts, time.Now())
+	if len(results) == 0 {
 		slog.Info("gambar bukan struk — pesan diabaikan", "msg_id", msgID)
-		return nil, nil
+		return &RecordOutcome{Status: RecordUnclear}, nil
 	}
 
 	raw := objectKey(jid, "image", mimeType)
-	return uc.recordMultiple(ctx, jid, pushName, out.Receipts, domain.SourceImage, raw, msgID)
+	return uc.record.FromParsed(ctx, jid, pushName, results, domain.SourceImage, raw, msgID)
 }
 
 func (uc *ProcessMedia) FromPDF(ctx context.Context, jid, pushName string,
-	data []byte, mimeType, msgID string) ([]*RecordOutcome, error) {
+	data []byte, mimeType, msgID string) (*RecordOutcome, error) {
 
 	if err := uc.archive(ctx, jid, "pdf", data, mimeType); err != nil {
 		slog.Warn("gagal arsip pdf", "error", err)
@@ -92,25 +99,28 @@ func (uc *ProcessMedia) FromPDF(ctx context.Context, jid, pushName string,
 
 	out, err := uc.doc.Process(ctx, media.Input{Data: data, MimeType: mimeType})
 	if err != nil {
+		if errors.Is(err, ai.ErrVisionExhausted) {
+			slog.Warn("ekstraksi pdf habis/limit — kirim pesan ramah", "error", err)
+			return &RecordOutcome{Status: RecordVisionUnavailable}, nil
+		}
 		slog.Warn("ekstraksi pdf gagal — pesan diabaikan", "error", err)
-		return nil, nil
+		return &RecordOutcome{Status: RecordUnclear}, nil
 	}
-	if len(out.Receipts) == 0 {
+	results := receiptsToResults(out.Receipts, time.Now())
+	if len(results) == 0 {
 		slog.Info("pdf tidak berisi transaksi — pesan diabaikan",
 			"msg_id", msgID, "statement_text", out.StatementText)
-		return nil, nil
+		return &RecordOutcome{Status: RecordUnclear}, nil
 	}
 
 	raw := objectKey(jid, "pdf", mimeType)
-	return uc.recordMultiple(ctx, jid, pushName, out.Receipts, domain.SourcePDF, raw, msgID)
+	return uc.record.FromParsed(ctx, jid, pushName, results, domain.SourcePDF, raw, msgID)
 }
 
-func (uc *ProcessMedia) recordMultiple(ctx context.Context, jid, pushName string,
-	receipts []media.ReceiptResult, source domain.SourceType, rawContent, msgID string) ([]*RecordOutcome, error) {
-
-	var outcomes []*RecordOutcome
+func receiptsToResults(receipts []media.ReceiptResult, now time.Time) []*parser.Result {
+	var out []*parser.Result
 	for _, rec := range receipts {
-		txDate := time.Now()
+		txDate := now
 		if rec.DateHint != "" {
 			for _, layout := range []string{"2006-01-02", "02/01/2006"} {
 				if d, perr := time.ParseInLocation(layout, rec.DateHint, wibLoc); perr == nil {
@@ -119,12 +129,11 @@ func (uc *ProcessMedia) recordMultiple(ctx context.Context, jid, pushName string
 				}
 			}
 		}
-
 		desc := rec.Description
 		if desc == "" && rec.Merchant != "" {
 			desc = rec.Merchant
 		}
-		res := &parser.Result{
+		out = append(out, &parser.Result{
 			Type:        domain.TransactionType(rec.Type),
 			Amount:      rec.Amount,
 			Description: desc,
@@ -132,15 +141,9 @@ func (uc *ProcessMedia) recordMultiple(ctx context.Context, jid, pushName string
 			Merchant:    rec.Merchant,
 			Date:        txDate,
 			Confidence:  rec.Confidence,
-		}
-		out, err := uc.record.FromParsed(ctx, jid, pushName, res, source, rawContent, msgID)
-		if err != nil {
-			slog.Warn("gagal mencatat transaksi dari media", "error", err)
-			continue
-		}
-		outcomes = append(outcomes, out)
+		})
 	}
-	return outcomes, nil
+	return out
 }
 
 func (uc *ProcessMedia) MaxSizeFor(kind string) int64 {
