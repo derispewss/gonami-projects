@@ -23,6 +23,7 @@
 | Voice note | 🎤 "jajan bakso sepuluh ribu" | STT Gemini → dicatat |
 | Foto struk | 📷 kirim struk Indomaret | Vision Gemini → draft konfirmasi |
 | PDF invoice/statement | 📄 kirim file PDF | Teks native (hemat token) / vision (scan) |
+| Multi-transaksi per media | satu foto/PDF berisi banyak transaksi | Gemini ekstrak semua baris → dicatat satu per satu |
 | Reaksi status | 👀 diproses → ✅ sukses / ❌ gagal | Umpan balik instan |
 | Draft + konfirmasi | balas `iya` / `tidak` | Simpan atau batal |
 | Laporan bebas gaya | `berapa pengeluaran bulan ini?` | Rekap otomatis |

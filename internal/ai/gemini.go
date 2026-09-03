@@ -105,7 +105,7 @@ func (g *Gemini) TranscribeAudio(ctx context.Context, data []byte, mimeType stri
 	return strings.TrimSpace(out), nil
 }
 
-func (g *Gemini) ExtractReceipt(ctx context.Context, data []byte, mimeType string) (*Extraction, error) {
+func (g *Gemini) ExtractReceipts(ctx context.Context, data []byte, mimeType string) ([]*Extraction, error) {
 	mime := cleanMIME(mimeType)
 	prompt := receiptPrompt
 	if strings.HasPrefix(mime, "application/") {
@@ -123,11 +123,11 @@ func (g *Gemini) ExtractReceipt(ctx context.Context, data []byte, mimeType strin
 		return nil, fmt.Errorf("gemini vision gagal: %w", err)
 	}
 
-	rec, err := ParseExtractionJSON(out)
+	list, err := ParseExtractionJSONArray(out)
 	if err != nil {
 		return nil, fmt.Errorf("output gemini tidak valid: %w", err)
 	}
-	return rec, nil
+	return list, nil
 }
 
 func (g *Gemini) ExtractFromChatText(ctx context.Context, text string, now time.Time) (*Extraction, error) {
@@ -142,16 +142,16 @@ func (g *Gemini) ExtractFromChatText(ctx context.Context, text string, now time.
 	return rec, nil
 }
 
-func (g *Gemini) ExtractFromStatementText(ctx context.Context, text string, now time.Time) (*Extraction, error) {
+func (g *Gemini) ExtractFromStatementTexts(ctx context.Context, text string, now time.Time) ([]*Extraction, error) {
 	out, err := g.generateText(ctx, withToday(statementTextPrompt, now)+"\n\nSTATEMENT TEXT:\n"+text)
 	if err != nil {
 		return nil, fmt.Errorf("ekstraksi statement gagal: %w", err)
 	}
-	rec, err := ParseExtractionJSON(out)
+	list, err := ParseExtractionJSONArray(out)
 	if err != nil {
 		return nil, fmt.Errorf("output tidak valid: %w", err)
 	}
-	return rec, nil
+	return list, nil
 }
 
 const sttPrompt = `Transcribe this voice note. It is an Indonesian personal finance message.

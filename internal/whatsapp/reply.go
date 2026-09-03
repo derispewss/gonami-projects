@@ -147,7 +147,7 @@ Catat transaksi dengan cara ngobrol biasa:
 • _aku beli ketoprak 25k dan esteh 3k_ → total 28rb
 • _transfer 50k ke Budi_
 • _bayar listrik 2jt kemarin_
-• kirim *foto struk*, *voice note*, atau *PDF*
+• kirim *foto struk*, *voice note*, atau *PDF* (bisa banyak transaksi sekaligus)
 
 Tanya apa aja, bebas gaya bahasanya:
 • _berapa pengeluaran hari ini?_

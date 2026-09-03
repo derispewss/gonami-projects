@@ -337,30 +337,56 @@ func (r *Router) handleMedia(ctx context.Context, evt *events.Message, kind Medi
 		return
 	}
 
-	var out *application.RecordOutcome
 	switch kind {
 	case MediaAudio:
-		out, err = r.app.Media.FromVoiceNote(ctx, jid.String(), evt.Info.PushName, data, mime, evt.Info.ID)
-	case MediaImage:
-		out, err = r.app.Media.FromImage(ctx, jid.String(), evt.Info.PushName, data, mime, evt.Info.ID)
-	case MediaPDF:
-		out, err = r.app.Media.FromPDF(ctx, jid.String(), evt.Info.PushName, data, mime, evt.Info.ID)
-	}
-	if err != nil {
-		slog.Error("error processing media", "kind", kind, "error", err)
-		react(ReactionFailed)
-		r.sender.SendText(ctx, jid, "⚠️ Terjadi kesalahan internal saat memproses media.")
-		return
-	}
+		out, aerr := r.app.Media.FromVoiceNote(ctx, jid.String(), evt.Info.PushName, data, mime, evt.Info.ID)
+		if aerr != nil {
+			slog.Error("error processing media", "kind", kind, "error", aerr)
+			react(ReactionFailed)
+			r.sender.SendText(ctx, jid, "⚠️ Terjadi kesalahan internal saat memproses media.")
+			return
+		}
+		switch out.Status {
+		case application.RecordSaved, application.RecordDraft:
+			react(ReactionSuccess)
+		default:
+			react(ReactionFailed)
+		}
+		r.replyOutcome(ctx, jid, out)
 
-	switch out.Status {
-	case application.RecordSaved, application.RecordDraft:
-		react(ReactionSuccess)
-	default:
-		react(ReactionFailed)
+	case MediaImage, MediaPDF:
+		var outs []*application.RecordOutcome
+		switch kind {
+		case MediaImage:
+			outs, err = r.app.Media.FromImage(ctx, jid.String(), evt.Info.PushName, data, mime, evt.Info.ID)
+		case MediaPDF:
+			outs, err = r.app.Media.FromPDF(ctx, jid.String(), evt.Info.PushName, data, mime, evt.Info.ID)
+		}
+		if err != nil {
+			slog.Error("error processing media", "kind", kind, "error", err)
+			react(ReactionFailed)
+			r.sender.SendText(ctx, jid, "⚠️ Terjadi kesalahan internal saat memproses media.")
+			return
+		}
+		if len(outs) == 0 {
+			react(ReactionFailed)
+			return
+		}
+		saved := 0
+		for _, out := range outs {
+			if out.Status == application.RecordSaved || out.Status == application.RecordDraft {
+				saved++
+			}
+		}
+		if saved > 0 {
+			react(ReactionSuccess)
+		} else {
+			react(ReactionFailed)
+		}
+		for _, out := range outs {
+			r.replyOutcome(ctx, jid, out)
+		}
 	}
-
-	r.replyOutcome(ctx, jid, out)
 }
 
 func (r *Router) replyOutcome(ctx context.Context, jid types.JID, out *application.RecordOutcome) {

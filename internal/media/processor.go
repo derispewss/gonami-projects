@@ -12,7 +12,7 @@ type Input struct {
 
 type Output struct {
 	Transcript    string
-	Receipt       *ReceiptResult
+	Receipts      []ReceiptResult
 	StatementText string
 }
 

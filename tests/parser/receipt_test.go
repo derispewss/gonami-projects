@@ -98,11 +98,68 @@ func TestProcessorSupports(t *testing.T) {
 	}
 }
 
-func TestImageProcessorRejectsNonReceipt(t *testing.T) {
+func TestImageProcessorEmptyReceipts(t *testing.T) {
 
 	out := &media.Output{}
-	if out.Receipt != nil {
-		t.Fatal("expected nil Receipt for non-receipt image")
+	if len(out.Receipts) != 0 {
+		t.Fatal("expected zero Receipts for non-receipt image")
 	}
 	_ = context.Background()
+}
+
+func TestParseExtractionJSONArray(t *testing.T) {
+	tests := []struct {
+		name   string
+		raw    string
+		wantOK bool
+		count  int
+		amount int64
+	}{
+		{
+			name:   "array dua transaksi",
+			raw:    `[{"is_transaction":true,"type":"expense","amount":15000,"description":"Kopi","category_hint":"","confidence":0.95},{"is_transaction":true,"type":"income","amount":100000,"description":"Gaji","category_hint":"","confidence":0.9}]`,
+			wantOK: true, count: 2, amount: 15000,
+		},
+		{
+			name:   "object tunggal di-wrap array",
+			raw:    `{"is_transaction":true,"type":"expense","amount":5000,"description":"Makan","category_hint":"","confidence":0.8}`,
+			wantOK: true, count: 1, amount: 5000,
+		},
+		{
+			name:   "array kosong",
+			raw:    `[]`,
+			wantOK: true, count: 0,
+		},
+		{
+			name:   "dengan teks markdown & penjelasan",
+			raw:    "Berikut hasilnya:\n```json\n[{\"is_transaction\":true,\"type\":\"expense\",\"amount\":20000,\"description\":\"Konnichiwa\",\"category_hint\":\"\",\"confidence\":0.85}]\n```\nSelesai.",
+			wantOK: true, count: 1, amount: 20000,
+		},
+		{
+			name:   "bukan array",
+			raw:    "halo dunia",
+			wantOK: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			list, err := ai.ParseExtractionJSONArray(tt.raw)
+			if tt.wantOK && err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !tt.wantOK {
+				if err == nil {
+					t.Fatal("expected error for invalid JSON array")
+				}
+				return
+			}
+			if len(list) != tt.count {
+				t.Fatalf("len = %d, want %d", len(list), tt.count)
+			}
+			if tt.count > 0 && tt.amount > 0 && list[0].Amount != tt.amount {
+				t.Errorf("list[0].Amount = %d, want %d", list[0].Amount, tt.amount)
+			}
+		})
+	}
 }

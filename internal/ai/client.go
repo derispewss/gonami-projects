@@ -23,9 +23,9 @@ func (r *Extraction) IsValid() bool {
 type AIClient interface {
 	TranscribeAudio(ctx context.Context, data []byte, mimeType string) (string, error)
 
-	ExtractReceipt(ctx context.Context, data []byte, mimeType string) (*Extraction, error)
+	ExtractReceipts(ctx context.Context, data []byte, mimeType string) ([]*Extraction, error)
 
 	ExtractFromChatText(ctx context.Context, text string, now time.Time) (*Extraction, error)
 
-	ExtractFromStatementText(ctx context.Context, text string, now time.Time) (*Extraction, error)
+	ExtractFromStatementTexts(ctx context.Context, text string, now time.Time) ([]*Extraction, error)
 }
