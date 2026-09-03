@@ -17,6 +17,12 @@ func ParseExtractionJSON(raw string) (*Extraction, error) {
 	raw = strings.TrimSuffix(raw, "```")
 	raw = strings.TrimSpace(raw)
 
+	start := strings.IndexByte(raw, '{')
+	end := strings.LastIndexByte(raw, '}')
+	if start >= 0 && end > start {
+		raw = raw[start : end+1]
+	}
+
 	var rec Extraction
 	if err := json.Unmarshal([]byte(raw), &rec); err != nil {
 		return nil, fmt.Errorf("bukan JSON valid: %w", err)

@@ -3,6 +3,7 @@ package media
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -27,13 +28,13 @@ func (p *DocumentProcessor) Process(ctx context.Context, in Input) (*Output, err
 	text, textErr := ExtractPDFText(in.Data)
 	if textErr == nil && len([]rune(strings.TrimSpace(text))) >= minStatementTextLen {
 		ext, err := p.client.ExtractFromStatementText(ctx, text, time.Now())
-		if err != nil {
-			return nil, fmt.Errorf("ekstraksi statement gagal: %w", err)
+		if err == nil {
+			return &Output{
+				StatementText: truncateRunes(text, 500),
+				Receipt:       toReceiptResult(ext),
+			}, nil
 		}
-		return &Output{
-			StatementText: truncateRunes(text, 500),
-			Receipt:       toReceiptResult(ext),
-		}, nil
+		slog.Warn("ekstraksi statement text gagal — fallback ke vision", "error", err)
 	}
 
 	rec, err := p.client.ExtractReceipt(ctx, in.Data, in.MimeType)
